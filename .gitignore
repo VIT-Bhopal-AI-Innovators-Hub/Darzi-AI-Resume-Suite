@@ -1,0 +1,17 @@
+# Python virtual environment
+venv/
+/venv/
+
+# Python bytecode and cache
+src/task-1/prototypes/__pycache__
+*.pyc
+
+# OS-specific files (macOS, Windows)
+.DS_Store
+Thumbs.db
+
+# Editor-specific files (VSCode)
+.vscode/
+
+# Application-specific temporary files
+src/task-1/temp_resume.pdf

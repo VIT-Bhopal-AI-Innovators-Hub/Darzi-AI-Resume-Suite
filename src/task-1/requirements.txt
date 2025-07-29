@@ -1,6 +1,6 @@
 streamlit
 pdfplumber==0.11.0
-numpy==1.24.4
+numpy>=1.26.0
 spacy==3.7.2
 thinc==8.2.1
 en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1.tar.gz
