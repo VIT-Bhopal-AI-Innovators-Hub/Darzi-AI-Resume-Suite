@@ -1,9 +1,8 @@
 # Python virtual environment
 venv/
-/venv/
 
 # Python bytecode and cache
-src/task-1/prototypes/__pycache__
+__pycache__/
 *.pyc
 
 # OS-specific files (macOS, Windows)
@@ -14,4 +13,4 @@ Thumbs.db
 .vscode/
 
 # Application-specific temporary files
-src/task-1/temp_resume.pdf
+temp_resume.pdf
