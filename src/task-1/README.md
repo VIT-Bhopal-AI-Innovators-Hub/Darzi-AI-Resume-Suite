@@ -6,7 +6,7 @@ This directory contains the initial prototype for the resume parsing engine for 
 
 ## Live Demo
 
-**You can test the live prototype here:** #Not yet deployed. I will deploy it ASAP
+**You can test the live prototype here:** https://darzi-ai-resume-parser-prototype.streamlit.app/
 
 ## Key Findings & Discoveries from Week 1
 
@@ -28,5 +28,8 @@ This directory contains the initial prototype for the resume parsing engine for 
 
 ## Screenshots
 
-![App Interface](path/to/your/screenshot1.png)
-![JSON Output](path/to/your/screenshot2.png)
+![Screenshot of Resume Parser](resources/CleanShot%202025-07-29%20at%2021.35.53@2x.png)
+
+![Screenshot of Resume Parser 2](resources/CleanShot%202025-07-29%20at%2021.36.02@2x.png)
+
+
