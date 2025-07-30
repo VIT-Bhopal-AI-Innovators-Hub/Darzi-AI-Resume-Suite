@@ -18,16 +18,16 @@ def extract_contact_info(text):
     }
     
     email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
-    phone_pattern = r'\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b'
+    phone_pattern = r'(\+?\d{1,3})?[-.\s]?\(?\d{3,5}\)?[-.\s]?\d{3,5}[-.\s]?\d{4,5}'
     
     emails = re.findall(email_pattern, text)
-    phones = re.findall(phone_pattern, text)
+    phone_match = re.search(phone_pattern, text)
     
     if emails:
         contact_info["email"] = emails[0]
-    if phones:
-        # Join the parts of the phone number if the regex has capture groups
-        contact_info["phone"] = ''.join(phones[0]) if isinstance(phones[0], tuple) else phones[0]
+    if phone_match:
+        # .group(0) returns entire matched string
+        contact_info["phone"] = phone_match.group(0)
         
     return contact_info
 
