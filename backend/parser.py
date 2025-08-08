@@ -21,11 +21,11 @@ class ResumeParser:
         self._setup_patterns()
     
     def _setup_patterns(self):
-        # Email pattern
+        #email pattern
         email_pattern = [{"TEXT": {"REGEX": r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"}}]
         self.matcher.add("EMAIL", [email_pattern])
         
-        # Phone pattern
+        #hone pattern
         phone_pattern = [{"TEXT": {"REGEX": r"\b(?:\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})\b"}}]
         self.matcher.add("PHONE", [phone_pattern])
     
