@@ -21,11 +21,11 @@ class ResumeParser:
         self._setup_patterns()
     
     def _setup_patterns(self):
-        # Email pattern
+        #emil pattern
         email_pattern = [{"TEXT": {"REGEX": r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"}}]
         self.matcher.add("EMAIL", [email_pattern])
         
-        # Phone pattern
+        #phone pattern
         phone_pattern = [{"TEXT": {"REGEX": r"\b(?:\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})\b"}}]
         self.matcher.add("PHONE", [phone_pattern])
     
@@ -191,7 +191,6 @@ class ResumeParser:
             r'\w+\s+institute(?:\s+of\s+\w+)*',
         ]
         
-        # Look for education section
         education_section_patterns = [
             r'education[:\s]+(.*?)(?=\n[A-Z][A-Z\s]+:|$)',
             r'academic[:\s]+(.*?)(?=\n[A-Z][A-Z\s]+:|$)',
@@ -205,15 +204,15 @@ class ResumeParser:
                 education_text = section_match.group(1)
                 break
         
-        # Extract education information
+        #extract education information
         for pattern in education_patterns:
             matches = re.findall(pattern, education_text, re.IGNORECASE)
             for match in matches:
                 cleaned_match = match.strip()
-                if len(cleaned_match) > 2:  # Avoid single letters
+                if len(cleaned_match) > 2:
                     education.append(cleaned_match.title())
         
-        # Remove duplicates and filter out common false positives
+        #remove duplicates and filter our common false positives
         education = list(set(education))
         
         false_positives = ['Ma', 'Ba', 'Ms', 'As', 'Is', 'In', 'On', 'Of', 'To', 'At']
@@ -236,7 +235,7 @@ class ResumeParser:
             "raw_text": text[:500] + "..." if len(text) > 500 else text  # First 500 chars
         }
 
-# Usage
+#usage
 if __name__ == "__main__":
     BASE_DIR = Path(r"C:\Users\ASUS\OneDrive\Desktop\Darzi-AI-Resume-Suite")
     PDF_DIR = BASE_DIR / "backend" / "resume-data"
@@ -255,7 +254,7 @@ if __name__ == "__main__":
     print(f"Parsed {len(parsed_resumes)} resume(s).")
     
     for i, resume in enumerate(parsed_resumes[:2]):  # Show first 2
-        print(f"\n--- Resume {i+1} ---")
+        print(f"\n-- Resume {i+1} --")
         for key, value in resume.items():
             if key != 'raw_text':
                 print(f"{key}: {value}")
