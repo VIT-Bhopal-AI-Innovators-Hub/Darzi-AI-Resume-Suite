@@ -32,7 +32,7 @@ const links = [
             },
             {
                 title: 'About',
-                href: '#',
+                href: '/about',
             },
         ],
     },
@@ -41,7 +41,7 @@ const links = [
         items: [
             {
                 title: 'About',
-                href: '#',
+                href: '/about',
             },
             {
                 title: 'Careers',
