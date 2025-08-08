@@ -21,11 +21,11 @@ class ResumeParser:
         self._setup_patterns()
     
     def _setup_patterns(self):
-        #emil pattern
+        # Email pattern
         email_pattern = [{"TEXT": {"REGEX": r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"}}]
         self.matcher.add("EMAIL", [email_pattern])
         
-        #phone pattern
+        # Phone pattern
         phone_pattern = [{"TEXT": {"REGEX": r"\b(?:\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})\b"}}]
         self.matcher.add("PHONE", [phone_pattern])
     
@@ -58,16 +58,15 @@ class ResumeParser:
     
     def extract_name(self, text: str) -> str:
         lines = text.strip().split('\n')
-        # Usually the name is in the first few lines
         for line in lines[:5]:
             line = line.strip()
             if line and not any(char.isdigit() for char in line) and len(line.split()) <= 4:
-                # Check if it looks like a name (not too long, no numbers)
                 if not re.search(r'[^\w\s\'-.]', line) and len(line) > 2:
                     return line
         return ""
     
     def extract_skills(self, text: str) -> List[str]:
+        #technical skills list
         skill_keywords = [
             # Programming Languages
             'python', 'java', 'javascript', 'typescript', 'c++', 'c#', 'php', 'ruby', 'go', 'rust', 'swift', 'kotlin',
@@ -99,7 +98,6 @@ class ResumeParser:
         found_skills = []
         text_lower = text.lower()
         
-        # Look for skills in dedicated skills section first
         skills_section_patterns = [
             r'skills?[:\s]+(.*?)(?=\n[A-Z][A-Z\s]+:|$)',
             r'technical\s+skills?[:\s]+(.*?)(?=\n[A-Z][A-Z\s]+:|$)',
@@ -115,11 +113,10 @@ class ResumeParser:
                 break
         
         for skill in skill_keywords:
-            # Use word boundaries to avoid partial matches
             if re.search(r'\b' + re.escape(skill.lower()) + r'\b', skills_text):
                 found_skills.append(skill.title())
         
-        return sorted(list(set(found_skills)))  # Remove duplicates and sort
+        return sorted(list(set(found_skills)))  #remove duplicates and sort
     
     def extract_experience(self, text: str) -> List[Dict[str, str]]:
         experience = []
@@ -138,6 +135,7 @@ class ResumeParser:
                 exp_text = match.group(1)
                 break
         
+        #looking for job titles and company names
         job_patterns = [
             r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s*[-–—]\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)',
             r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+at\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)',
@@ -151,11 +149,12 @@ class ResumeParser:
                     'company': match[1].strip()
                 })
         
-        return experience[:5]  # Limit to 5 experiences
+        return experience[:5]  #imit to 5 experiences
     
     def extract_education(self, text: str) -> List[str]:
         education = []
         
+        #specific patterns for education
         education_patterns = [
             # Full degree names
             r'bachelor\s+of\s+\w+(?:\s+\w+)*',
@@ -204,7 +203,7 @@ class ResumeParser:
                 education_text = section_match.group(1)
                 break
         
-        #extract education information
+        #extxract edu info
         for pattern in education_patterns:
             matches = re.findall(pattern, education_text, re.IGNORECASE)
             for match in matches:
@@ -212,15 +211,17 @@ class ResumeParser:
                 if len(cleaned_match) > 2:
                     education.append(cleaned_match.title())
         
-        #remove duplicates and filter our common false positives
+        #remove duplicates and filter out common false positives
         education = list(set(education))
         
+        #filter out common false positives
         false_positives = ['Ma', 'Ba', 'Ms', 'As', 'Is', 'In', 'On', 'Of', 'To', 'At']
         education = [edu for edu in education if edu not in false_positives and len(edu) > 2]
         
-        return education[:10]  #Limit to first 10 to avoid too much noise
+        return education[:10]  #limit to first 10 to avoid too much noie
     
     def parse_resume(self, pdf_path: str) -> Dict[str, Any]:
+        """Parse resume and extract information"""
         text = self.extract_text_from_pdf(pdf_path)
         
         if not text.strip():
@@ -232,29 +233,49 @@ class ResumeParser:
             "mobile_number": self.extract_phone(text),
             "skills": self.extract_skills(text),
             "education": self.extract_education(text),
+            "experience": self.extract_experience(text),
             "raw_text": text[:500] + "..." if len(text) > 500 else text  # First 500 chars
         }
 
-#usage
 if __name__ == "__main__":
+    import json
+    from datetime import datetime
+    
     BASE_DIR = Path(r"C:\Users\ASUS\OneDrive\Desktop\Darzi-AI-Resume-Suite")
     PDF_DIR = BASE_DIR / "backend" / "resume-data"
+    OUTPUT_DIR = BASE_DIR / "backend" / "parsed-resumes"
 
     if not PDF_DIR.is_dir():
         raise FileNotFoundError(f"Directory not found: {PDF_DIR}")
+    
+    OUTPUT_DIR.mkdir(exist_ok=True)
 
     parser = ResumeParser()
     parsed_resumes = []
 
     for pdf_path in PDF_DIR.glob("*.pdf"):
-        print(f"Processing: {pdf_path.name}")
         data = parser.parse_resume(str(pdf_path))
+        
+        # Add metadata
+        data["file_name"] = pdf_path.name
+        data["processed_at"] = datetime.now().isoformat()
+        
         parsed_resumes.append(data)
 
-    print(f"Parsed {len(parsed_resumes)} resume(s).")
+    for i, resume_data in enumerate(parsed_resumes):
+        file_name = resume_data.get("file_name", f"resume_{i+1}")
+        json_filename = f"{file_name.replace('.pdf', '')}_parsed.json"
+        json_path = OUTPUT_DIR / json_filename
+        
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(resume_data, f, indent=2, ensure_ascii=False)
+
+    combined_output = {
+        "total_resumes": len(parsed_resumes),
+        "processed_at": datetime.now().isoformat(),
+        "resumes": parsed_resumes
+    }
     
-    for i, resume in enumerate(parsed_resumes[:2]):  # Show first 2
-        print(f"\n-- Resume {i+1} --")
-        for key, value in resume.items():
-            if key != 'raw_text':
-                print(f"{key}: {value}")
+    combined_path = OUTPUT_DIR / "all_resumes_parsed.json"
+    with open(combined_path, 'w', encoding='utf-8') as f:
+        json.dump(combined_output, f, indent=2, ensure_ascii=False)
