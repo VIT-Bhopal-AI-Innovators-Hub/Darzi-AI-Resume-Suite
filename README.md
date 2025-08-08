@@ -40,21 +40,7 @@ There is a clear need for an AI-powered, intuitive, and multilingual resume opti
 
 ## 🏗️ Project Structure
 
-```
-Darzi-AI-Resume-Suite/
-├── README.md                 # This file - Main project documentation
-├── .gitignore               # Git ignore rules
-├── frontend/                # Next.js frontend application
-│   ├── app/                 # Next.js app directory
-│   ├── components/          # React components
-│   ├── lib/                 # Utility libraries
-│   ├── public/              # Static assets
-│   ├── package.json         # Frontend dependencies
-│   └── README.md           # Frontend-specific setup
-├── backend/                 # Python backend API
-│   └── main.py             # Backend entry point
-
-```
+Check the project structure here [Project Structure](PROJECT_STRUCTURE.md)
 
 ## 📋 Prerequisites
 
