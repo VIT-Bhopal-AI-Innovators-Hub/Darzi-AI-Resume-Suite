@@ -1,2 +1,19 @@
 fastapi
 uvicorn
+# Core dependencies for Resume Parser
+PyPDF2==3.0.1
+spacy>=3.7.0,<4.0.0
+
+# Optional: If you need more recent PDF parsing capabilities, you might consider:
+# pypdf==4.0.1  # Alternative to PyPDF2 with better performance
+
+# For spaCy English language model (install separately with: python -m spacy download en_core_web_sm)
+# The en_core_web_sm model is not a pip package but downloaded via spaCy's CLI
+
+# Standard library modules used (no installation required):
+# - warnings
+# - re  
+# - pathlib
+# - typing
+# - json
+# - datetime
