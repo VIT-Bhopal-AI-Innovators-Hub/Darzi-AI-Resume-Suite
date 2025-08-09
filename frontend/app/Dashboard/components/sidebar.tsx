@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Logo } from "@/components/logo";
+import Link from "next/link";
 import {
   Home,
   FileText,
@@ -14,38 +15,43 @@ import {
 const NavItem = ({
   icon,
   children,
+  href,
   active = false,
   isCollapsed = false,
 }: {
   icon: React.ReactElement;
   children: React.ReactNode;
+  href?: string;
   active?: boolean;
   isCollapsed?: boolean;
 }) => (
-  <a
-    href="#"
-    className={`flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 ${
-      active
-        ? "bg-gray-200 text-black"
-        : "text-gray-300 hover:bg-gray-800 hover:text-white"
-    } ${isCollapsed ? "justify-center" : ""}`}
-    title={isCollapsed ? children?.toString() : undefined}
-  >
-    <div
-      className={`p-1.5 ${isCollapsed ? "" : "mr-3"} rounded-lg transition-colors duration-300 ${
-        active ? "bg-black" : "bg-gray-700"
-      }`}
+  href ? (
+
+    <Link
+      href={href}
+      className={`flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 ${
+        active
+          ? "bg-gray-200 text-black"
+          : "text-gray-300 hover:bg-gray-800 hover:text-white"
+      } ${isCollapsed ? "justify-center" : ""}`}
+      title={isCollapsed ? children?.toString() : undefined}
     >
-      {React.cloneElement(icon, {
-        className: `h-5 w-5 text-white`,
-      } as React.HTMLAttributes<SVGElement>)}
-    </div>
-    {!isCollapsed && (
-      <span className="whitespace-nowrap overflow-hidden transition-all duration-300 opacity-100">
-        {children}
-      </span>
-    )}
-  </a>
+      <div
+        className={`p-1.5 ${isCollapsed ? "" : "mr-3"} rounded-lg transition-colors duration-300 ${
+          active ? "bg-black" : "bg-gray-700"
+        }`}
+      >
+        {React.cloneElement(icon, {
+          className: `h-5 w-5 text-white`,
+        } as React.HTMLAttributes<SVGElement>)}
+      </div>
+      {!isCollapsed && (
+        <span className="whitespace-nowrap overflow-hidden transition-all duration-300 opacity-100">
+          {children}
+        </span>
+      )}
+    </Link>
+  ): null
 );
 
 export default function Sidebar({
@@ -98,16 +104,16 @@ export default function Sidebar({
         {/* Navigation - Scrollable area */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           <nav className="space-y-2">
-            <NavItem icon={<Home />} active isCollapsed={isCollapsed}>
+            <NavItem icon={<Home />} href="/Dashboard" active isCollapsed={isCollapsed}>
               Dashboard
             </NavItem>
-            <NavItem icon={<FileText />} isCollapsed={isCollapsed}>
+            <NavItem icon={<FileText />} href="/Dashboard" isCollapsed={isCollapsed}>
               Resume Editor
             </NavItem>
-            <NavItem icon={<Target />} isCollapsed={isCollapsed}>
+            <NavItem icon={<Target />} href="/Dashboard" isCollapsed={isCollapsed}>
               ATS Checker
             </NavItem>
-            <NavItem icon={<BarChart3 />} isCollapsed={isCollapsed}>
+            <NavItem icon={<BarChart3 />} href="/Dashboard/templates" isCollapsed={isCollapsed}>
               Templates
             </NavItem>
             
@@ -118,10 +124,10 @@ export default function Sidebar({
                   Account
                 </p>
               )}
-              <NavItem icon={<User />} isCollapsed={isCollapsed}>
+              <NavItem icon={<User />} href="/Dashboard" isCollapsed={isCollapsed}>
                 Profile
               </NavItem>
-              <NavItem icon={<Settings />} isCollapsed={isCollapsed}>
+              <NavItem icon={<Settings />} href="/Dashboard" isCollapsed={isCollapsed}>
                 Settings
               </NavItem>
             </div>
