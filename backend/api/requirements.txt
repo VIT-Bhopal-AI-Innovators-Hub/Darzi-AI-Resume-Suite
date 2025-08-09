@@ -1,0 +1,9 @@
+fastapi
+fastmcp
+uvicorn
+
+PyPDF2==3.0.1
+spacy>=3.7.0,<4.0.0
+
+# Optional: If you need more recent PDF parsing capabilities, you might consider:
+# pypdf==4.0.1  # Alternative to PyPDF2 with better performance

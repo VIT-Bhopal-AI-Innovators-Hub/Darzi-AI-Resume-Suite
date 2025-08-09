@@ -1,4 +1,4 @@
-FROM python:3.11.10
+FROM python:3.12.6
 
 WORKDIR /code
 
@@ -7,10 +7,8 @@ ENV VIRTUAL_ENV=/code/.venv
 RUN uv venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-COPY requirements.txt .
-RUN uv pip install --no-cache -r requirements.txt
-
 COPY . .
+RUN uv pip install -e .
 
 ENV PORT=7860
 EXPOSE $PORT

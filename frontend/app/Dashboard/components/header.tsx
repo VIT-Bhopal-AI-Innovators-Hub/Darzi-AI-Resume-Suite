@@ -1,4 +1,6 @@
 import { User, Settings, Search, Bell } from 'lucide-react';
+import Link from 'next/link';
+import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 
 export default function Header() {
     return (
@@ -13,10 +15,15 @@ export default function Header() {
                 <input type="text" placeholder="Type here..." className="bg-transparent pl-9 text-sm focus:outline-none text-white" />
             </div>
             <div className="flex items-center space-x-4 ml-4">
-                <a href="#" className="flex items-center text-sm text-gray-300 hover:text-white">
-                    <User className="h-4 w-4 mr-1" />
-                    Sign In
-                </a>
+                <SignedOut>
+                    <Link href="/sign-in" className="flex items-center text-sm text-gray-300 hover:text-white">
+                        <User className="h-4 w-4 mr-1" />
+                        Sign In
+                    </Link>
+                </SignedOut>
+                <SignedIn>
+                    <UserButton />
+                </SignedIn>
                 <a href="#"><Settings className="h-5 w-5 text-gray-400 hover:text-white active:animate-spin" /></a> {/* I like the spin animation, dont remove it. -Abhash */}
                 <a href="#"><Bell className="h-5 w-5 text-gray-400 hover:text-white" /></a>
             </div>

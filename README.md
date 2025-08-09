@@ -62,7 +62,7 @@ Open the Command line or Terminal.
 2.  **Clone your forked repository**
     -   Replace `[username]` with your actual GitHub username in the command below.
     ```bash
-    git clone [https://github.com/](https://github.com/)[username]/Darzi-AI-Resume-Suite
+    git clone https://github.com/[username]/Darzi-AI-Resume-Suite
     ```
 
 3.  **Move to the project folder**
@@ -74,6 +74,31 @@ Open the Command line or Terminal.
     ```bash
     code .
     ```
+
+## 🧑‍💻 Local Development (Frontend)
+
+1. Copy env example and create your local env
+   ```bash
+   cp frontend/.env.example frontend/.env.local
+   ```
+2. Edit `frontend/.env.local` and set your own Clerk keys
+   - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=`
+   - `CLERK_SECRET_KEY=`
+   Do not commit `.env.local` (it is gitignored).
+3. Install and run the frontend
+   ```bash
+   cd frontend
+   pnpm install
+   pnpm dev
+   ```
+4. Open the app
+   - http://localhost:3000
+5. Auth routes (for testing)
+   - Sign In: `/sign-in`
+   - Sign Up: `/sign-up`
+   - After sign-in: `/Dashboard` (protected; signed-out users are redirected to `/sign-in`)
+
+> Backend is optional for UI testing. If needed, see `backend/README.md` for setup.
 
 ## 🤝 Contributing
 
