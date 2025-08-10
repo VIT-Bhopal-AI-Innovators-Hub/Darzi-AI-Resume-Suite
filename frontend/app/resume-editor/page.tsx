@@ -4,8 +4,8 @@ import React, { useState } from 'react'
 import Sidebar from '../Dashboard/components/sidebar'
 import Header from '../Dashboard/components/header'
 import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/nextjs'
-import { Logo } from '@/components/logo'
 import { Bot, Plus, Trash2 } from 'lucide-react'
+import FooterSection from '@/components/footer'
 
 type SectionEntry = {
   id: string
@@ -595,6 +595,7 @@ export default function ResumeEditorPage() {
                 </section>
               </div>
             </div>
+            <FooterSection />
           </main>
         </div>
       </SignedIn>

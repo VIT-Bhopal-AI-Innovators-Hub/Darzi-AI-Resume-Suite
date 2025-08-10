@@ -445,6 +445,7 @@ export default function App() {
                 <MyResumesCard data={resumes} />
                 <ActionItemsCard data={actionItems} />
               </div>
+              <FooterSection />
             </div>
           </main>
         </div>

@@ -1,15 +1,15 @@
 import React, { useState } from "react";
 import { Logo } from "@/components/logo";
-import Link from "next/link";
 import {
   Home,
   FileText,
-  User,
-  Settings,
+  // User,
+  // Settings,
   HelpCircle,
   Menu,
   Target,
-  LayoutTemplate,
+  // LayoutTemplate,
+  BarChart3
 } from "lucide-react";
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -17,17 +17,15 @@ import { usePathname } from 'next/navigation'
 const NavItem = ({
   icon,
   children,
-  href,
   active = false,
   isCollapsed = false,
   href,
 }: {
   icon: React.ReactElement;
   children: React.ReactNode;
-  href?: string;
+  href: string;
   active?: boolean;
   isCollapsed?: boolean;
-  href: string;
 }) => (
 
   <Link
@@ -139,7 +137,7 @@ export default function Sidebar({
               Resume Editor
             </NavItem>
             <DisabledNavItem icon={<Target />} label="ATS Checker" isCollapsed={isCollapsed} />
-            <NavItem icon={<BarChart3 />} href="/Dashboard/templates" isCollapsed={isCollapsed}>
+            <NavItem icon={<BarChart3 />} href="/templates" active={pathname === '/templates'} isCollapsed={isCollapsed}>
               Templates
             </NavItem>
             {/* Account section - always stays below main nav item
