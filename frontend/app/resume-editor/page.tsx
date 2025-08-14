@@ -4,8 +4,11 @@ import React, { useState } from "react";
 import Sidebar from "../../components/main/sidebar";
 import Header from "@/components/main/header";
 import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
-import { Bot, Plus, Trash2 } from "lucide-react";
+import { Bot, Plus, Trash2, FileText, Code } from "lucide-react";
 import FooterSection from "@/components/footer";
+import LaTeXPreview from "@/components/latex-preview";
+import type { ResumeData } from "@/lib/latex-generator";
+import { exportToPDF } from "@/lib/pdf-export";
 
 type SectionEntry = {
   id: string;
@@ -25,6 +28,7 @@ type Section = {
 
 export default function ResumeEditorPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [previewMode, setPreviewMode] = useState<'html' | 'latex'>('html');
   const [fullName, setFullName] = useState("");
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
@@ -242,6 +246,29 @@ export default function ResumeEditorPage() {
   const removeLink = (id: string) =>
     setLinks((prev) => prev.filter((l) => l.id !== id));
 
+  // Prepare resume data for LaTeX generation
+  const resumeData: ResumeData = {
+    fullName,
+    title,
+    email,
+    phone,
+    location,
+    website,
+    summary,
+    skills,
+    sections,
+    additionalLinks: links,
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      await exportToPDF(resumeData);
+    } catch (error) {
+      console.error('PDF export failed:', error);
+      alert('PDF export failed. Please ensure popups are allowed and try again.');
+    }
+  };
+
   return (
     <>
       <SignedIn>
@@ -412,7 +439,7 @@ export default function ResumeEditorPage() {
                     </button>
                   </div>
 
-                  {sections.map((section, sIdx) => (
+                  {sections.map((section) => (
                     <div
                       key={section.id}
                       className="border border-white/10 rounded-lg p-4 space-y-4 bg-black/40"
@@ -604,112 +631,146 @@ export default function ResumeEditorPage() {
               <div className="space-y-6">
                 <section className="bg-white/5 border border-white/10 rounded-xl p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="font-bold text-sm tracking-wide">
-                      LIVE PREVIEW
-                    </h2>
-                    <button className="text-xs bg-white text-black font-semibold px-3 py-1.5 rounded-md hover:bg-gray-200">
-                      Export (Coming Soon)
+                    <div className="flex items-center gap-3">
+                      <h2 className="font-bold text-sm tracking-wide">
+                        LIVE PREVIEW
+                      </h2>
+                      <div className="flex bg-black/40 rounded-md p-1">
+                        <button
+                          onClick={() => setPreviewMode('html')}
+                          className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                            previewMode === 'html'
+                              ? 'bg-white text-black'
+                              : 'text-gray-400 hover:text-white'
+                          }`}
+                        >
+                          <FileText className="h-3.5 w-3.5" />
+                          HTML
+                        </button>
+                        <button
+                          onClick={() => setPreviewMode('latex')}
+                          className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                            previewMode === 'latex'
+                              ? 'bg-white text-black'
+                              : 'text-gray-400 hover:text-white'
+                          }`}
+                        >
+                          <Code className="h-3.5 w-3.5" />
+                          LaTeX
+                        </button>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={handleExportPDF}
+                      className="text-xs bg-white text-black font-semibold px-3 py-1.5 rounded-md hover:bg-gray-200"
+                    >
+                      Export PDF
                     </button>
                   </div>
-                  <div className="bg-white text-black rounded-md p-8 text-sm leading-relaxed font-[350] shadow-inner">
-                    <h1 className="text-2xl font-semibold tracking-wide">
-                      {fullName || "John Doe"}
-                    </h1>
-                    <p className="uppercase tracking-wide text-xs mt-1 text-gray-600">
-                      {title || "Frontend Engineer"}
-                    </p>
-                    {([email, phone, location, website].some(Boolean) ||
-                      links.length > 0) && (
-                      <p className="text-[11px] mt-2 text-gray-700 flex flex-wrap gap-x-2 gap-y-1">
-                        {email && <span>{email}</span>}
-                        {phone && <span>{phone}</span>}
-                        {location && <span>{location}</span>}
-                        {website && <span>{website}</span>}
-                        {links
-                          .filter((l) => l.url || l.label)
-                          .map((l) => {
-                            const text = l.label || l.url;
-                            const href =
-                              l.url ||
-                              (l.label?.startsWith("http") ? l.label : "");
-                            return href ? (
-                              <a
-                                key={l.id}
-                                href={href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="underline"
-                              >
-                                {text}
-                              </a>
-                            ) : (
-                              <span key={l.id}>{text}</span>
-                            );
-                          })}
+                  
+                  {previewMode === 'html' ? (
+                    <div className="bg-white text-black rounded-md p-8 text-sm leading-relaxed font-[350] shadow-inner">
+                      <h1 className="text-2xl font-semibold tracking-wide">
+                        {fullName || "John Doe"}
+                      </h1>
+                      <p className="uppercase tracking-wide text-xs mt-1 text-gray-600">
+                        {title || "Frontend Engineer"}
                       </p>
-                    )}
-                    <hr className="my-4 border-gray-300" />
-                    {summary && <p className="text-[13px] mb-4">{summary}</p>}
-                    <h3 className="font-semibold text-sm tracking-wide mb-1">
-                      SKILLS
-                    </h3>
-                    <p className="text-[12px] mb-4">
-                      {skills
-                        .split(",")
-                        .map((s) => s.trim())
-                        .filter(Boolean)
-                        .join(" • ")}
-                    </p>
-                    <h3 className="font-semibold text-sm tracking-wide mb-2">
-                      {/* Dynamic heading */}
-                    </h3>
-                    <div className="space-y-6">
-                      {sections.map((section) => (
-                        <div key={section.id}>
-                          <h4 className="font-semibold text-sm tracking-wide mb-2">
-                            {section.name || "Section"}
-                          </h4>
-                          <div className="space-y-4">
-                            {section.entries.map((entry) => (
-                              <div key={entry.id}>
-                                <div className="flex justify-between">
-                                  <p className="font-semibold text-[13px]">
-                                    {entry.position || "Title"}
-                                    {entry.organization ? " | " : ""}
-                                    {entry.organization}
-                                    {entry.linkUrl && (
-                                      <a
-                                        href={entry.linkUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="ml-2 text-[11px] underline font-normal"
-                                      >
-                                        {entry.linkLabel || "Link"}
-                                      </a>
-                                    )}
-                                  </p>
-                                  <p className="text-[11px] text-gray-600">
-                                    {entry.start || "YYYY-MM"} -{" "}
-                                    {entry.end || "Present"}
-                                  </p>
+                      {([email, phone, location, website].some(Boolean) ||
+                        links.length > 0) && (
+                        <p className="text-[11px] mt-2 text-gray-700 flex flex-wrap gap-x-2 gap-y-1">
+                          {email && <span>{email}</span>}
+                          {phone && <span>{phone}</span>}
+                          {location && <span>{location}</span>}
+                          {website && <span>{website}</span>}
+                          {links
+                            .filter((l) => l.url || l.label)
+                            .map((l) => {
+                              const text = l.label || l.url;
+                              const href =
+                                l.url ||
+                                (l.label?.startsWith("http") ? l.label : "");
+                              return href ? (
+                                <a
+                                  key={l.id}
+                                  href={href}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="underline"
+                                >
+                                  {text}
+                                </a>
+                              ) : (
+                                <span key={l.id}>{text}</span>
+                              );
+                            })}
+                        </p>
+                      )}
+                      <hr className="my-4 border-gray-300" />
+                      {summary && <p className="text-[13px] mb-4">{summary}</p>}
+                      <h3 className="font-semibold text-sm tracking-wide mb-1">
+                        SKILLS
+                      </h3>
+                      <p className="text-[12px] mb-4">
+                        {skills
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean)
+                          .join(" • ")}
+                      </p>
+                      <h3 className="font-semibold text-sm tracking-wide mb-2">
+                        {/* Dynamic heading */}
+                      </h3>
+                      <div className="space-y-6">
+                        {sections.map((section) => (
+                          <div key={section.id}>
+                            <h4 className="font-semibold text-sm tracking-wide mb-2">
+                              {section.name || "Section"}
+                            </h4>
+                            <div className="space-y-4">
+                              {section.entries.map((entry) => (
+                                <div key={entry.id}>
+                                  <div className="flex justify-between">
+                                    <p className="font-semibold text-[13px]">
+                                      {entry.position || "Title"}
+                                      {entry.organization ? " | " : ""}
+                                      {entry.organization}
+                                      {entry.linkUrl && (
+                                        <a
+                                          href={entry.linkUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="ml-2 text-[11px] underline font-normal"
+                                        >
+                                          {entry.linkLabel || "Link"}
+                                        </a>
+                                      )}
+                                    </p>
+                                    <p className="text-[11px] text-gray-600">
+                                      {entry.start || "YYYY-MM"} -{" "}
+                                      {entry.end || "Present"}
+                                    </p>
+                                  </div>
+                                  <ul className="list-disc ml-4 mt-1 space-y-1">
+                                    {entry.bullets
+                                      .filter((b) => b.trim())
+                                      .map((b, i) => (
+                                        <li key={i} className="text-[12px]">
+                                          {b}
+                                        </li>
+                                      ))}
+                                  </ul>
                                 </div>
-                                <ul className="list-disc ml-4 mt-1 space-y-1">
-                                  {entry.bullets
-                                    .filter((b) => b.trim())
-                                    .map((b, i) => (
-                                      <li key={i} className="text-[12px]">
-                                        {b}
-                                      </li>
-                                    ))}
-                                </ul>
-                              </div>
-                            ))}
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
+                      {/* we can leave the rest of preview unchanged */}
                     </div>
-                    {/* we can leave the rest of preview unchanged */}
-                  </div>
+                  ) : (
+                    <LaTeXPreview resumeData={resumeData} />
+                  )}
                 </section>
               </div>
             </div>
