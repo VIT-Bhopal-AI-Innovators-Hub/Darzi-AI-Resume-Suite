@@ -1,0 +1,3 @@
+{
+  "ignoreCommand": "if [ $(git rev-list --count HEAD) -gt 1 ]; then git diff --quiet HEAD^ HEAD -- ./frontend; else echo 'First deploy, building...'; exit 1; fi"
+}

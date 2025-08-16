@@ -24,6 +24,7 @@ There is a clear need for an AI-powered, intuitive, and multilingual resume opti
 
 ### Core Functionality
 - **AI-Powered Resume Builder**: Create professional resumes from scratch using intelligent AI assistance
+- **Resume Parsing API**: Extract structured data from PDF resumes and plain text using hybrid local + AI parsing
 - **ATS Optimization**: Ensure your resume passes Applicant Tracking Systems with tailored formatting and keyword analysis
 - **LinkedIn Integration**: Import your professional profile data directly from LinkedIn
 - **GitHub Project Integration**: Showcase your technical projects and contributions
@@ -40,21 +41,7 @@ There is a clear need for an AI-powered, intuitive, and multilingual resume opti
 
 ## 🏗️ Project Structure
 
-```
-Darzi-AI-Resume-Suite/
-├── README.md                 # This file - Main project documentation
-├── .gitignore               # Git ignore rules
-├── frontend/                # Next.js frontend application
-│   ├── app/                 # Next.js app directory
-│   ├── components/          # React components
-│   ├── lib/                 # Utility libraries
-│   ├── public/              # Static assets
-│   ├── package.json         # Frontend dependencies
-│   └── README.md           # Frontend-specific setup
-├── backend/                 # Python backend API
-│   └── main.py             # Backend entry point
-
-```
+Check the project structure here [Project Structure](PROJECT_STRUCTURE.md)
 
 ## 📋 Prerequisites
 
@@ -76,7 +63,7 @@ Open the Command line or Terminal.
 2.  **Clone your forked repository**
     -   Replace `[username]` with your actual GitHub username in the command below.
     ```bash
-    git clone [https://github.com/](https://github.com/)[username]/Darzi-AI-Resume-Suite
+    git clone https://github.com/[username]/Darzi-AI-Resume-Suite
     ```
 
 3.  **Move to the project folder**
@@ -88,6 +75,31 @@ Open the Command line or Terminal.
     ```bash
     code .
     ```
+
+## 🧑‍💻 Local Development (Frontend)
+
+1. Copy env example and create your local env
+   ```bash
+   cp frontend/.env.example frontend/.env.local
+   ```
+2. Edit `frontend/.env.local` and set your own Clerk keys
+   - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=`
+   - `CLERK_SECRET_KEY=`
+   Do not commit `.env.local` (it is gitignored).
+3. Install and run the frontend
+   ```bash
+   cd frontend
+   pnpm install
+   pnpm dev
+   ```
+4. Open the app
+   - http://localhost:3000
+5. Auth routes (for testing)
+   - Sign In: `/sign-in`
+   - Sign Up: `/sign-up`
+   - After sign-in: `/Dashboard` (protected; signed-out users are redirected to `/sign-in`)
+
+> Backend is optional for UI testing. If needed, see `backend/README.md` for setup.
 
 ## 🤝 Contributing
 

@@ -75,13 +75,14 @@ const HeroHeader = () => {
                                     ))}
                                 </ul>
                             </div>
+                            {/* Keep existing buttons, just wire to Clerk routes */}
                             <div className="flex w-full flex-col space-y-3 sm:flex-row sm:gap-3 sm:space-y-0 md:w-fit">
                                 <Button
                                     asChild
                                     variant="outline"
                                     size="sm"
                                     className={cn(isScrolled && 'lg:hidden')}>
-                                    <Link href="#">
+                                    <Link href="/sign-in">
                                         <span>Login</span>
                                     </Link>
                                 </Button>
@@ -89,7 +90,7 @@ const HeroHeader = () => {
                                     asChild
                                     size="sm"
                                     className={cn(isScrolled && 'lg:hidden')}>
-                                    <Link href="#">
+                                    <Link href="/sign-up">
                                         <span>Sign Up</span>
                                     </Link>
                                 </Button>
@@ -97,7 +98,7 @@ const HeroHeader = () => {
                                     asChild
                                     size="sm"
                                     className={cn(isScrolled ? 'lg:inline-flex' : 'hidden')}>
-                                    <Link href="#">
+                                    <Link href="/Dashboard">
                                         <span>Get Started</span>
                                     </Link>
                                 </Button>

@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Environments
+.venv/
+.env
+.env.*
+
+# VCS
+.git/
+.gitignore
+.gitattributes
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Caches & logs
+*.log
+.cache/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Notebooks outputs
+.ipynb_checkpoints/

@@ -20,6 +20,22 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Environment Variables (Clerk)
+
+1. Copy `.env.example` to `.env.local` and fill in values locally. Do not commit `.env.local`.
+2. For shared environments, store keys in your platform secrets:
+   - Vercel: Project Settings → Environment Variables
+   - GitHub Actions: Settings → Secrets and variables → Actions
+3. Optionally, developers can pull environment variables from Vercel:
+
+```bash
+vercel login
+vercel link
+vercel env pull .env.local
+```
+
+> Never commit real keys to the repo. The publishable key is public at runtime but should still be set via env; the secret key must remain server-only.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

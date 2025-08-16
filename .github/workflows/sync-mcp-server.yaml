@@ -1,0 +1,27 @@
+name: Sync MCP Server to Hugging Face Space
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/mcp/**"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push backend/mcp to Hugging Face
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git remote add hf https://user:$HF_TOKEN@huggingface.co/spaces/VIT-Bhopal-AI-Innovators-Hub/darzi-mcp-server
+
+          # Push only backend/mcp folder to HF main branch
+          git push hf `git subtree split --prefix backend/mcp main`:main --force

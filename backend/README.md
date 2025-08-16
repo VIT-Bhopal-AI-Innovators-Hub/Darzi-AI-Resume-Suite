@@ -1,28 +1,20 @@
----
-title: Darzi Backend API
-emoji: 📃
-colorFrom: green
-colorTo: yellow
-sdk: docker
----
+# Backend Directory
 
-# Backend API
-This directory contains the source code for the backend API, built using FastAPI.
+This directory serves two backend implementations:  
+- **MCP Tools**  
+- **FastAPI**  
 
 ## Setup
 
-Using the provided Dockerfile, you can easily build and run the API container.
-
-1. Build the Docker image:
+We highly recommend using [UV](https://github.com/astral-sh/uv) for setting up the project.
 
 ```bash
-docker build -t darzi-backend-api .
+# Install UV if not already installed
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install dependencies
+uv sync
+
+# Run the application
+uv run main.py
 ```
-
-2. Run the Docker container:
-
-```bash
-docker run -p 7860:7860 darzi-backend-api
-```
-
-3. Access the API at `http://localhost:7860/`.

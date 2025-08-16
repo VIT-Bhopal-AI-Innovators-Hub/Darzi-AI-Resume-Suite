@@ -87,6 +87,7 @@ export default function HeroSection() {
                                         className="absolute inset-x-0 top-56 -z-20 hidden lg:top-32 dark:block w-full h-full object-cover"
                                         width={1920}
                                         height={1080}
+                                        priority 
                                     />
                                 </AnimatedGroup>
                                 <div className="absolute inset-0 -z-10 size-full [background:radial-gradient(125%_125%_at_50%_100%,transparent_0%,var(--color-background)_75%)]"></div>
@@ -193,6 +194,7 @@ export default function HeroSection() {
                                                 alt="app screen"
                                                 width="2700"
                                                 height="1440"
+                                                priority
                                             />
                                             <Image
                                                 className="z-2 border-border/25 aspect-15/8 relative rounded-2xl border dark:hidden"
@@ -200,6 +202,7 @@ export default function HeroSection() {
                                                 alt="app screen"
                                                 width="2700"
                                                 height="1440"
+                                                priority
                                             />
                                         </div>
                                     </div>

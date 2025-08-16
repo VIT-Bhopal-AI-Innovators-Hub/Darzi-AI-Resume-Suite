@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { Logo } from "@/components/logo";
 import FooterSection from "@/components/footer";
-import Sidebar from "./components/sidebar";
-import Header from "./components/header";
+import Sidebar from "@/components/main/sidebar";
+import Header from "@/components/main/header";
 import { Card } from "./components/card";
 import {
   FileText,
@@ -18,6 +18,7 @@ import {
   BrainCircuit,
   ListChecks,
 } from "lucide-react";
+import { SignedIn, SignedOut, RedirectToSignIn, useUser } from "@clerk/nextjs";
 
 type StatData = {
   resumesCreated: number;
@@ -79,12 +80,12 @@ const StatCard = ({
   </Card>
 );
 
-const WelcomeCard = () => (
+const WelcomeCard = ({ name }: { name: string }) => (
   <Card className="flex flex-col justify-between h-full !p-0 overflow-hidden relative">
     <div className="absolute inset-0 bg-gradient-to-br from-gray-900 to-black opacity-80"></div>
     <div className="p-6 pb-0 z-10">
-      <p className="text-white text-sm">Welcome back,</p>
-      <h3 className="text-white text-2xl font-bold">Alex Thompson</h3>
+      <p className="text-white text-sm">Welcome,</p>
+      <h3 className="text-white text-2xl font-bold">{name}</h3>
       <p className="text-white text-sm mt-1">
         Ready to land your dream job? Let's get started.
       </p>
@@ -311,6 +312,14 @@ export default function App() {
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { user, isLoaded } = useUser();
+
+  const displayName =
+    isLoaded && user?.firstName && user?.lastName
+      ? `${user.firstName} ${user.lastName}`
+      : isLoaded && user?.username
+      ? user.username
+      : "User";
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -366,7 +375,7 @@ export default function App() {
         },
       ]);
       setLoading(false);
-    }, 1500);
+    }, 0); //increase delay if required
 
     return () => clearTimeout(timer);
   }, []);
@@ -383,68 +392,75 @@ export default function App() {
   }
 
   return (
-    <div className="bg-black text-white min-h-screen font-sans">
-      <Sidebar onToggle={setSidebarCollapsed} />
-      <main
-        className={`overflow-y-auto transition-all duration-300 ease-in-out ${
-          sidebarCollapsed ? "ml-20" : "ml-64"
-        }`}
-      >
-        <Header />
-        <div className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <StatCard
-              title="Resumes Created"
-              value={stats?.resumesCreated || 0}
-              change="+2"
-              changeType="increase"
-              icon={<FileText className="text-black" />}
-            />
-            <StatCard
-              title="Avg. ATS Score"
-              value={`${stats?.avgAtsScore || 0}%`}
-              change="+5%"
-              changeType="increase"
-              icon={<Target className="text-black" />}
-            />
-            <StatCard
-              title="Keywords Matched"
-              value={stats?.keywordsMatched || 0}
-              change="+12"
-              changeType="increase"
-              icon={<ListChecks className="text-black" />}
-            />
-            <StatCard
-              title="Templates Used"
-              value={stats?.templatesUsed || 0}
-              icon={<BarChart3 className="text-black" />}
-            />
-          </div>
+    <>
+      <SignedIn>
+        <div className="bg-black text-white min-h-screen font-sans">
+          <Sidebar onToggle={setSidebarCollapsed} />
+          <main
+            className={`overflow-y-auto transition-all duration-300 ease-in-out ${
+              sidebarCollapsed ? "ml-20" : "ml-64"
+            }`}
+          >
+            <Header pageName="Dashboard" />
+            <div className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <StatCard
+                  title="Resumes Created"
+                  value={stats?.resumesCreated || 0}
+                  change="+2"
+                  changeType="increase"
+                  icon={<FileText className="text-black" />}
+                />
+                <StatCard
+                  title="Avg. ATS Score"
+                  value={`${stats?.avgAtsScore || 0}%`}
+                  change="+5%"
+                  changeType="increase"
+                  icon={<Target className="text-black" />}
+                />
+                <StatCard
+                  title="Keywords Matched"
+                  value={stats?.keywordsMatched || 0}
+                  change="+12"
+                  changeType="increase"
+                  icon={<ListChecks className="text-black" />}
+                />
+                <StatCard
+                  title="Templates Used"
+                  value={stats?.templatesUsed || 0}
+                  icon={<BarChart3 className="text-black" />}
+                />
+              </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            <div className="lg:col-span-1">
-              <WelcomeCard />
-            </div>
-            <div className="lg:col-span-1">
-              <OverallAtsScoreCard score={stats?.avgAtsScore || 0} />
-            </div>
-            <div className="lg:col-span-1">
-              <RecentActivityCard />
-            </div>
-          </div>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <div className="lg:col-span-1">
+                  <WelcomeCard name={displayName} />
+                </div>
+                <div className="lg:col-span-1">
+                  <OverallAtsScoreCard score={stats?.avgAtsScore || 0} />
+                </div>
+                <div className="lg:col-span-1">
+                  <RecentActivityCard />
+                </div>
+              </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
-            <AtsScoreHistoryCard />
-            <KeywordAnalysisCard data={keywords} />
-          </div>
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+                <AtsScoreHistoryCard />
+                <KeywordAnalysisCard data={keywords} />
+              </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <MyResumesCard data={resumes} />
-            <ActionItemsCard data={actionItems} />
-          </div>
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <MyResumesCard data={resumes} />
+                <ActionItemsCard data={actionItems} />
+              </div>
+              <FooterSection />
+            </div>
+          </main>
         </div>
-        <FooterSection />
-      </main>
-    </div>
+      </SignedIn>
+      <SignedOut>
+        <RedirectToSignIn />
+      </SignedOut>
+    </>
   );
 }
