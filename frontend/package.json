@@ -1,7 +1,25 @@
 {
-  "name": "frontend",
-  "version": "0.1.0",
+  "name": "darzi-ai-resume-suite-frontend",
+  "version": "1.0.0",
+  "description": "Modern Next.js frontend for Darzi AI Resume Suite - AI-powered resume processing platform",
   "private": true,
+  "license": "MIT",
+  "author": "VIT Bhopal AI Innovators Hub",
+  "homepage": "https://github.com/Abhash-Chakraborty/Darzi-AI-Resume-Suite",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Abhash-Chakraborty/Darzi-AI-Resume-Suite.git"
+  },
+  "keywords": [
+    "nextjs",
+    "react",
+    "resume",
+    "ai",
+    "career",
+    "ats",
+    "typescript",
+    "tailwindcss"
+  ],
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",

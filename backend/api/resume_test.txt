@@ -1,0 +1,18 @@
+JOHN DOE
+Software Engineer
+Phone: +1-555-123-4567
+Email: john.doe@email.com
+
+PROFESSIONAL SUMMARY
+Experienced software engineer with 5+ years in full-stack development.
+
+TECHNICAL SKILLS
+Programming Languages: JavaScript, Python, Java
+Frontend: React, Vue.js, HTML5, CSS3
+Backend: Node.js, Express.js, Django
+
+WORK EXPERIENCE
+Senior Software Engineer
+TechCorp Inc. | Jan 2020 - Present
+• Led development of microservices architecture
+• Improved application performance by 40%

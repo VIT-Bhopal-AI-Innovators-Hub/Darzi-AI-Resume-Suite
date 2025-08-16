@@ -1,7 +1,29 @@
 [project]
 name = "darzi-backend-api"
-version = "0.1.0"
+version = "1.0.0"
 description = "AI-powered resume parsing and text extraction API for Darzi Resume Suite"
+authors = [
+    {name = "VIT Bhopal AI Innovators Hub", email = "ai.innovators@vitbhopal.ac.in"},
+]
+license = {text = "MIT"}
+readme = "README.md"
+keywords = [
+    "ai", "resume", "parsing", "ats", "nlp", "fastapi", 
+    "machine-learning", "text-extraction", "career"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+    "Topic :: Office/Business",
+]
 dependencies = [
     "fastapi>=0.110.0",
     "uvicorn==0.24.0",
@@ -15,9 +37,15 @@ dependencies = [
     "nltk==3.8.1",
     "fastmcp==2.0.0",
     "rich==14.1.0",
+    "google-generativeai>=0.8.0",
 ]
-readme = "README.md"
 requires-python = ">=3.11"
+
+[project.urls]
+Homepage = "https://github.com/Abhash-Chakraborty/Darzi-AI-Resume-Suite"
+Repository = "https://github.com/Abhash-Chakraborty/Darzi-AI-Resume-Suite"
+Documentation = "https://github.com/Abhash-Chakraborty/Darzi-AI-Resume-Suite/blob/main/README.md"
+Issues = "https://github.com/Abhash-Chakraborty/Darzi-AI-Resume-Suite/issues"
 
 [dependency-groups]
 dev = ["pytest"]
