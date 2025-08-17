@@ -1,5 +1,19 @@
+/* Fallback for okLCH colors for html2canvas */
+@supports (color: oklch(0% 0 0)) {
+  :root {}
+}
+
+@supports not (color: oklch(0% 0 0)) {
+  /* Replace oklch with rgb fallback */
+  * {
+    color: inherit !important;
+    background-color: inherit !important;
+  }
+}
+
 @import "tailwindcss";
 @import "tw-animate-css";
+
 
 @custom-variant dark (&:is(.dark *));
 

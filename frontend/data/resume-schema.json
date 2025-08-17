@@ -1,0 +1,50 @@
+{
+  "name": "John Doe",
+  "title": "Aspiring Software Engineer",
+  "contact": {
+    "location": "New York, USA",
+    "phone": "+1 234 567 890",
+    "email": "john@example.com"
+  },
+  "links": {
+    "github": "github.com/johndoe",
+    "linkedin": "linkedin.com/in/johndoe"
+  },
+  "problemSolving": {
+    "codeforces": "codeforces.com/profile/johndoe",
+    "leetcode": "leetcode.com/johndoe",
+    "gfg": "geeksforgeeks.org/johndoe"
+  },
+  "skills": ["JavaScript", "React", "TypeScript", "Python", "Tailwind CSS"],
+  "education": {
+    "degree": "B.Tech in Computer Science",
+    "university": "VIT Bhopal",
+    "duration": "2021 - 2025"
+  },
+  "projects": [
+    {
+      "title": "Portfolio Website",
+      "technologies": "React, Tailwind CSS, Vercel",
+      "description": "A personal portfolio website showcasing my projects and skills."
+    },
+    {
+      "title": "E-Commerce App",
+      "technologies": "Next.js, TypeScript, MongoDB",
+      "description": "A full-stack e-commerce application with authentication and payments."
+    }
+  ],
+  "experience": [
+    {
+      "company": "TechCorp",
+      "role": "Frontend Developer Intern",
+      "duration": "June 2024 - August 2024",
+      "description": "Worked on building reusable UI components with React and Tailwind CSS."
+    },
+    {
+      "company": "Open Source",
+      "role": "Contributor",
+      "duration": "2023 - Present",
+      "description": "Contributed to open-source projects on GitHub, improving documentation and fixing bugs."
+    }
+  ]
+}
