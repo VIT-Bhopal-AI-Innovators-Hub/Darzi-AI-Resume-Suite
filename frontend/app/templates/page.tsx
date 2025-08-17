@@ -14,11 +14,13 @@ import ModernResume from "./ModernResume";
 import CreativeResume from "./CreativeResume";
 import ClassicResume from "./ClassicResume";
 
+
 interface Template {
   id: number;
   name: string;
   tags: string[];
   component: React.FC<{ data: Resume }>;
+
 }
 
 const templatesData: Template[] = [
@@ -27,12 +29,14 @@ const templatesData: Template[] = [
     name: "Modern Professional",
     tags: ["Minimal", "ATS-Friendly"],
     component: ModernResume,
+
   },
   {
     id: 2,
     name: "Creative Design",
     tags: ["Colorful", "Portfolio Style"],
     component: CreativeResume,
+
   },
   {
     id: 3,
