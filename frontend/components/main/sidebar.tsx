@@ -10,10 +10,10 @@ import {
   Menu,
   Target,
   // LayoutTemplate,
-  BarChart3
+  BarChart3,
 } from "lucide-react";
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const NavItem = ({
   icon,
@@ -28,7 +28,6 @@ const NavItem = ({
   active?: boolean;
   isCollapsed?: boolean;
 }) => (
-
   <Link
     href={href}
     className={`flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 ${
@@ -39,7 +38,9 @@ const NavItem = ({
     title={isCollapsed ? children?.toString() : undefined}
   >
     <div
-      className={`p-1.5 ${isCollapsed ? "" : "mr-3"} rounded-lg transition-colors duration-300 ${
+      className={`p-1.5 ${
+        isCollapsed ? "" : "mr-3"
+      } rounded-lg transition-colors duration-300 ${
         active ? "bg-black" : "bg-gray-700"
       }`}
     >
@@ -70,7 +71,9 @@ const DisabledNavItem = ({
     }`}
     title={`${label} (Coming Soon)`}
   >
-    <div className={`p-1.5 ${isCollapsed ? "" : "mr-3"} rounded-lg bg-gray-800`}>
+    <div
+      className={`p-1.5 ${isCollapsed ? "" : "mr-3"} rounded-lg bg-gray-800`}
+    >
       {React.cloneElement(icon, {
         className: "h-5 w-5 text-gray-400",
       } as React.HTMLAttributes<SVGElement>)}
@@ -130,20 +133,43 @@ export default function Sidebar({
         {/* Navigation - Scrollable area */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           <nav className="space-y-2">
-
-            <NavItem icon={<Home />} href="/dashboard" active={pathname === '/dashboard'} isCollapsed={isCollapsed}>
+            <NavItem
+              icon={<Home />}
+              href="/dashboard"
+              active={pathname === "/dashboard"}
+              isCollapsed={isCollapsed}
+            >
               Dashboard
             </NavItem>
-            <NavItem icon={<FileText />} href="/resume-editor" active={pathname === '/resume-editor'} isCollapsed={isCollapsed}>
-              Resume Editor
-            </NavItem>
-            <NavItem icon={<FilePlus2 />} href="/generate-resume" active={pathname === '/generate-resume'} isCollapsed={isCollapsed}>
+            <NavItem
+              icon={<FilePlus2 />}
+              href="/generate-resume"
+              active={pathname === "/generate-resume"}
+              isCollapsed={isCollapsed}
+            >
               Generate Resume
             </NavItem>
-            <NavItem icon={<BarChart3 />} href="/templates" active={pathname === '/templates'} isCollapsed={isCollapsed}>
+            <NavItem
+              icon={<FileText />}
+              href="/resume-editor"
+              active={pathname === "/resume-editor"}
+              isCollapsed={isCollapsed}
+            >
+              Resume Editor
+            </NavItem>
+            <NavItem
+              icon={<BarChart3 />}
+              href="/templates"
+              active={pathname === "/templates"}
+              isCollapsed={isCollapsed}
+            >
               Templates
             </NavItem>
-            <DisabledNavItem icon={<Target />} label="ATS Checker" isCollapsed={isCollapsed} />
+            <DisabledNavItem
+              icon={<Target />}
+              label="ATS Checker"
+              isCollapsed={isCollapsed}
+            />
             {/* Account section - always stays below main nav item
             <div className="mt-6">
               {!isCollapsed && (
@@ -162,17 +188,26 @@ export default function Sidebar({
 
         {/* Help box - always at bottom */}
         <div className={`mt-auto ${isCollapsed ? "hidden" : "block"}`}>
-          <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 text-white text-center relative overflow-hidden transition-all duration-300">
-            <div className="absolute top-0 left-0 w-full h-full bg-black/20"></div>
-            <div className="relative z-10">
-              <HelpCircle className="mx-auto h-10 w-10 mb-3" />
-              <h3 className="font-bold">Need help?</h3>
-              <p className="text-xs mt-1 mb-3">Please check our docs</p>
-              <button className="bg-white hover:bg-gray-200 text-black font-bold text-xs py-2 px-4 rounded-lg w-full transition-colors">
-                DOCUMENTATION
-              </button>
-            </div>
-          </div>
+          <a
+            href="https://github.com/VIT-Bhopal-AI-Innovators-Hub/Darzi-AI-Resume-Suite"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="cursor-pointer"
+          >
+            <button className="bg-white hover:bg-gray-200 text-black font-bold text-xs py-2 px-4 rounded-lg w-full transition-colors flex items-center justify-center gap-2">
+              {/* GitHub Logo SVG */}
+              <svg
+                aria-hidden="true"
+                focusable="false"
+                className="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.28-.01-1.02-.01-2-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.3-1.7-1.3-1.7-1.06-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.73 1.27 3.4.97.11-.75.41-1.27.74-1.56-2.56-.29-5.26-1.28-5.26-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.04 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 2.9-.39c.98 0 1.97.13 2.9.39 2.2-1.49 3.17-1.18 3.17-1.18.63 1.58.23 2.75.12 3.04.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.7.42.36.79 1.09.79 2.2 0 1.59-.01 2.87-.01 3.26 0 .31.21.68.8.56C20.71 21.39 24 17.08 24 12c0-6.27-5.23-11.5-12-11.5z" />
+              </svg>
+              Star on GitHub
+            </button>
+          </a>
         </div>
       </div>
     </div>

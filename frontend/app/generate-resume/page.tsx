@@ -6,14 +6,12 @@ import Header from "@/components/main/header";
 import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
 import {
   Plus,
-  Trash2,
-  Upload,
-  FileText,
-  Linkedin,
   Github,
+  Trash2,
   FileSearch,
 } from "lucide-react";
 import FooterSection from "@/components/footer";
+import Image from "next/image";
 
 type SectionEntry = {
   id: string;
@@ -289,21 +287,6 @@ export default function ResumeEditorPage() {
       )
     );
 
-  const addLink = () =>
-    setLinks((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), label: "", url: "" },
-    ]);
-
-  const updateLink = (
-    id: string,
-    patch: Partial<{ label: string; url: string }>
-  ) =>
-    setLinks((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
-
-  const removeLink = (id: string) =>
-    setLinks((prev) => prev.filter((l) => l.id !== id));
-
   return (
     <>
       <SignedIn>
@@ -323,76 +306,6 @@ export default function ResumeEditorPage() {
                     UPLOAD YOUR INFORMATION
                   </h2>
 
-                  {/* Resume Upload */}
-                  <div className="mb-6">
-                    <label className="text-xs text-gray-400 block mb-2">
-                      Resume (PDF)
-                    </label>
-                    <div
-                      onClick={() => triggerFileInput(resumeInputRef)}
-                      className="border border-dashed border-white/30 rounded-lg p-4 text-center cursor-pointer hover:bg-white/5 transition-colors"
-                    >
-                      <input
-                        type="file"
-                        ref={resumeInputRef}
-                        onChange={(e) => handleFileUpload(e, setResumeFile)}
-                        accept=".pdf"
-                        className="hidden"
-                      />
-                      {resumeFile ? (
-                        <div className="flex items-center justify-center gap-2 text-green-400">
-                          <FileText className="h-5 w-5" />
-                          <span className="text-sm">{resumeFile.name}</span>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center justify-center">
-                          <Upload className="h-8 w-8 mb-2 text-gray-400" />
-                          <p className="text-sm text-gray-400">
-                            Upload your current resume (PDF)
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Click or drag and drop
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* LinkedIn Profile Upload */}
-                  <div className="mb-6">
-                    <label className="text-xs text-gray-400 block mb-2">
-                      LinkedIn Profile (PDF)
-                    </label>
-                    <div
-                      onClick={() => triggerFileInput(linkedinInputRef)}
-                      className="border border-dashed border-white/30 rounded-lg p-4 text-center cursor-pointer hover:bg-white/5 transition-colors"
-                    >
-                      <input
-                        type="file"
-                        ref={linkedinInputRef}
-                        onChange={(e) => handleFileUpload(e, setLinkedinFile)}
-                        accept=".pdf"
-                        className="hidden"
-                      />
-                      {linkedinFile ? (
-                        <div className="flex items-center justify-center gap-2 text-green-400">
-                          <Linkedin className="h-5 w-5" />
-                          <span className="text-sm">{linkedinFile.name}</span>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center justify-center">
-                          <Linkedin className="h-8 w-8 mb-2 text-gray-400" />
-                          <p className="text-sm text-gray-400">
-                            Upload your LinkedIn profile (PDF)
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Click or drag and drop
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
                   {/* Job Description Upload */}
                   <div className="mb-6">
                     <label className="text-xs text-gray-400 block mb-2">
@@ -400,7 +313,7 @@ export default function ResumeEditorPage() {
                     </label>
                     <div
                       onClick={() => triggerFileInput(jobDescriptionInputRef)}
-                      className="border border-dashed border-white/30 rounded-lg p-4 text-center cursor-pointer hover:bg-white/5 transition-colors"
+                      className="border border-dashed border-white/30 rounded-lg p-4 text-center cursor-pointer hover:bg-white/5 transition-colors py-38"
                     >
                       <input
                         type="file"
@@ -412,7 +325,7 @@ export default function ResumeEditorPage() {
                         className="hidden"
                       />
                       {jobDescriptionFile ? (
-                        <div className="flex items-center justify-center gap-2 text-green-400">
+                        <div className="flex items-center justify-center gap-2 text-green-400 py-7">
                           <FileSearch className="h-5 w-5" />
                           <span className="text-sm">
                             {jobDescriptionFile.name}
@@ -425,7 +338,7 @@ export default function ResumeEditorPage() {
                             Upload job description (PDF or Text)
                           </p>
                           <p className="text-xs text-gray-500 mt-1">
-                            Click or drag and drop
+                            Click and drop
                           </p>
                         </div>
                       )}
@@ -679,26 +592,6 @@ export default function ResumeEditorPage() {
                     ))}
                   </section>
                 )}
-
-                {/* <section className="bg-white/5 border border-white/10 rounded-xl p-5">
-                  <h2 className="font-bold mb-4 text-sm tracking-wide flex items-center gap-2">
-                    <Bot className="h-4 w-4" /> AI SUGGESTIONS
-                  </h2>
-                  <p className="text-xs text-gray-400">
-                    Our AI analyzes your resume against the job description to provide optimization suggestions.
-                  </p>
-                  <div className="mt-3 text-sm space-y-2">
-                    <div className="p-3 rounded-md bg-black/40 border border-white/10">
-                      Add more quantified metrics in bullets to showcase your impact.
-                    </div>
-                    <div className="p-3 rounded-md bg-black/40 border border-white/10">
-                      Include keywords from the job description to improve ATS matching score.
-                    </div>
-                    <div className="p-3 rounded-md bg-black/40 border border-white/10">
-                      Highlight relevant project experience that aligns with the required skills.
-                    </div>
-                  </div>
-                </section> */}
               </div>
 
               {/* PREVIEW */}
@@ -708,109 +601,15 @@ export default function ResumeEditorPage() {
                     <h2 className="font-bold text-sm tracking-wide">
                       LIVE PREVIEW
                     </h2>
-                    <button className="text-xs bg-white text-black font-semibold px-3 py-1.5 rounded-md hover:bg-gray-200 disabled:cursor-not-allowed">
+                    <button className="text-xs bg-white/90 text-black font-semibold px-3 py-1.5 rounded-md hover:bg-gray-200 disabled:cursor-not-allowed">
                       Export PDF (Coming Soon)
                     </button>
                   </div>
-                  <div className="bg-white text-black rounded-md p-8 text-sm leading-relaxed font-[350] shadow-inner">
-                    <h1 className="text-2xl font-semibold tracking-wide">
-                      {fullName || "John Doe"}
-                    </h1>
-                    <p className="uppercase tracking-wide text-xs mt-1 text-gray-600">
-                      {title || "Frontend Engineer"}
-                    </p>
-                    {([email, phone, location, website].some(Boolean) ||
-                      links.length > 0) && (
-                      <p className="text-[11px] mt-2 text-gray-700 flex flex-wrap gap-x-2 gap-y-1">
-                        {email && <span>{email}</span>}
-                        {phone && <span>{phone}</span>}
-                        {location && <span>{location}</span>}
-                        {website && <span>{website}</span>}
-                        {links
-                          .filter((l) => l.url || l.label)
-                          .map((l) => {
-                            const text = l.label || l.url;
-                            const href =
-                              l.url ||
-                              (l.label?.startsWith("http") ? l.label : "");
-                            return href ? (
-                              <a
-                                key={l.id}
-                                href={href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="underline"
-                              >
-                                {text}
-                              </a>
-                            ) : (
-                              <span key={l.id}>{text}</span>
-                            );
-                          })}
-                      </p>
-                    )}
-                    <hr className="my-4 border-gray-300" />
-                    {summary && <p className="text-[13px] mb-4">{summary}</p>}
-                    <h3 className="font-semibold text-sm tracking-wide mb-1">
-                      SKILLS
-                    </h3>
-                    <p className="text-[12px] mb-4">
-                      {skills
-                        .split(",")
-                        .map((s) => s.trim())
-                        .filter(Boolean)
-                        .join(" • ")}
-                    </p>
-                    <div className="space-y-6">
-                      {sections.map((section) => (
-                        <div key={section.id}>
-                          <h4 className="font-semibold text-sm tracking-wide mb-2">
-                            {section.name || "Section"}
-                          </h4>
-                          <div className="space-y-4">
-                            {section.entries.map((entry) => (
-                              <div key={entry.id}>
-                                <div className="flex justify-between">
-                                  <p className="font-semibold text-[13px]">
-                                    {entry.position || "Title"}
-                                    {entry.organization ? " | " : ""}
-                                    {entry.organization}
-                                    {entry.linkUrl && (
-                                      <a
-                                        href={entry.linkUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="ml-2 text-[11px] underline font-normal"
-                                      >
-                                        {entry.linkLabel || "Link"}
-                                      </a>
-                                    )}
-                                  </p>
-                                  <p className="text-[11px] text-gray-600">
-                                    {entry.start || "YYYY-MM"} -{" "}
-                                    {entry.end || "Present"}
-                                  </p>
-                                </div>
-                                <ul className="list-disc ml-4 mt-1 space-y-1">
-                                  {entry.bullets
-                                    .filter((b) => b.trim())
-                                    .map((b, i) => (
-                                      <li key={i} className="text-[12px]">
-                                        {b}
-                                      </li>
-                                    ))}
-                                </ul>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <Image src="/jake.jpeg" height={200} width={1200} alt="jake's-resume" className="rounded-lg"></Image>
                 </section>
               </div>
             </div>
-            <FooterSection />
+            {/* <FooterSection /> */}
           </main>
         </div>
       </SignedIn>

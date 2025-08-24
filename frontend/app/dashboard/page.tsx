@@ -7,6 +7,7 @@ import Sidebar from "@/components/main/sidebar";
 import Header from "@/components/main/header";
 import { Card } from "./components/card";
 import {
+  RefreshCcw,
   FileText,
   BarChart3,
   Bot,
@@ -92,10 +93,10 @@ const WelcomeCard = ({ name }: { name: string }) => (
     </div>
     <div className="p-6 pt-0 z-10">
       <a
-        href="#"
+        href="/generate-resume"
         className="text-white text-sm font-bold flex items-center bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 p-2 rounded-lg w-fit transition-colors"
       >
-        Upload a Job Description <ChevronRight className="h-4 w-4 ml-1" />
+        Generate a Resume <ChevronRight className="h-4 w-4 ml-1" />
       </a>
     </div>
   </Card>
@@ -171,12 +172,22 @@ const RecentActivityCard = () => (
 
 const AtsScoreHistoryCard = () => (
   <Card className="col-span-2">
-    <h4 className="font-bold text-white">ATS Score Over Time</h4>
-    <p className="text-sm text-gray-400">
-      Your score improvements on your primary resume.
-    </p>
+    <h4 className="font-bold text-white">History</h4>
+    <p className="text-sm text-gray-400">Your previous generated resumes.</p>
     <div className="mt-4 flex items-center justify-center h-64 bg-black/20 rounded-lg">
-      <p className="text-gray-500">Chart will be displayed here.</p>
+      <button
+        type="button"
+        className="ml-1 p-1 rounded-sm transition-colors hover:bg-gray-800 px-2 cursor-pointer"
+        aria-label="Refresh"
+        onClick={() => {
+          console.log("Fetching data...");
+        }}
+      >
+        <p className="text-gray-500 flex items-center gap-1 text-sm">
+          Fetch Data?
+          <RefreshCcw className="w-4 h-4 text-gray-400" />
+        </p>
+      </button>
     </div>
   </Card>
 );
@@ -280,30 +291,30 @@ const MyResumesCard = ({ data }: { data: Resume[] }) => (
   </Card>
 );
 
-const ActionItemsCard = ({ data }: { data: ActionItem[] }) => (
-  <Card>
-    <h4 className="font-bold text-white">AI Action Items</h4>
-    <p className="text-sm text-gray-400 flex items-center">
-      <ArrowUp className="h-4 w-4 text-gray-300 mr-1" /> Suggestions to improve
-      your score
-    </p>
-    <div className="mt-6 space-y-6">
-      {data.map((item, index) => (
-        <div key={index} className="flex items-start">
-          <div className="p-2 bg-gray-800 rounded-full mr-4">
-            {React.cloneElement(item.icon, {
-              className: "text-gray-300",
-            } as React.HTMLAttributes<SVGElement>)}
-          </div>
-          <div>
-            <p className="text-sm font-bold text-white">{item.text}</p>
-            <p className="text-xs text-gray-400">{item.suggestion}</p>
-          </div>
-        </div>
-      ))}
-    </div>
-  </Card>
-);
+// const ActionItemsCard = ({ data }: { data: ActionItem[] }) => (
+//   <Card>
+//     <h4 className="font-bold text-white">AI Action Items</h4>
+//     <p className="text-sm text-gray-400 flex items-center">
+//       <ArrowUp className="h-4 w-4 text-gray-300 mr-1" /> Suggestions to improve
+//       your score
+//     </p>
+//     <div className="mt-6 space-y-6">
+//       {data.map((item, index) => (
+//         <div key={index} className="flex items-start">
+//           <div className="p-2 bg-gray-800 rounded-full mr-4">
+//             {React.cloneElement(item.icon, {
+//               className: "text-gray-300",
+//             } as React.HTMLAttributes<SVGElement>)}
+//           </div>
+//           <div>
+//             <p className="text-sm font-bold text-white">{item.text}</p>
+//             <p className="text-xs text-gray-400">{item.suggestion}</p>
+//           </div>
+//         </div>
+//       ))}
+//     </div>
+//   </Card>
+// );
 
 export default function App() {
   const [stats, setStats] = useState<StatData | null>(null);
@@ -403,7 +414,7 @@ export default function App() {
           >
             <Header pageName="Dashboard" />
             <div className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+              {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                 <StatCard
                   title="Resumes Created"
                   value={stats?.resumesCreated || 0}
@@ -430,7 +441,7 @@ export default function App() {
                   value={stats?.templatesUsed || 0}
                   icon={<BarChart3 className="text-black" />}
                 />
-              </div>
+              </div> */}
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                 <div className="lg:col-span-1">
@@ -449,11 +460,11 @@ export default function App() {
                 <KeywordAnalysisCard data={keywords} />
               </div>
 
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+              {/* <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <MyResumesCard data={resumes} />
                 <ActionItemsCard data={actionItems} />
-              </div>
-              <FooterSection />
+              </div> */}
+              {/* <FooterSection /> */}
             </div>
           </main>
         </div>
