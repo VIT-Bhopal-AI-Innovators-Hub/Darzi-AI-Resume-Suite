@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  compile:
+    build: ./server
+    ports:
+      - '58404:58404'
+    
+    deploy:
+      resources:
+        limits:
+          memory: 1536M

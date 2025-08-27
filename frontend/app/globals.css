@@ -134,3 +134,61 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Monaco Editor Styles */
+.monaco-editor {
+  font-family: 'Geist Mono', 'Fira Code', 'Consolas', 'Monaco', monospace !important;
+}
+
+.monaco-editor .margin {
+  background-color: #1f2937 !important;
+}
+
+.monaco-editor .monaco-editor-background {
+  background-color: #1f2937 !important;
+}
+
+.monaco-editor .view-overlays .current-line {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+}
+
+.monaco-editor .selectionHighlight {
+  background-color: rgba(59, 130, 246, 0.2) !important;
+}
+
+.monaco-editor .focused .selectionHighlight {
+  background-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+.monaco-editor .monaco-editor .cursor {
+  background-color: #f9fafb !important;
+}
+
+.monaco-editor .scrollbar {
+  background-color: #374151 !important;
+}
+
+.monaco-editor .scrollbar .slider {
+  background-color: #6b7280 !important;
+}
+
+.monaco-editor .scrollbar .slider:hover {
+  background-color: #9ca3af !important;
+}
+
+.monaco-editor .scrollbar .slider.active {
+  background-color: #d1d5db !important;
+}
+
+/* Ensure editor controls are visible */
+.monaco-editor .minimap {
+  background-color: #1f2937 !important;
+}
+
+.monaco-editor .minimap .minimap-slider {
+  background-color: rgba(156, 163, 175, 0.3) !important;
+}
+
+.monaco-editor .minimap .minimap-slider:hover {
+  background-color: rgba(156, 163, 175, 0.5) !important;
+}
