@@ -21,7 +21,7 @@ const Editor = dynamic(() => import('@monaco-editor/react'), {
   )
 })
 
-const WS_URL = (process.env.NEXT_PUBLIC_WS_URL as string) || 'wss://ayush-003-latexwebsocket.hf.space'
+const WS_URL ='wss://ayush-003-latexwebsocket.hf.space'
 
 export default function ResumeGenerator(): JSX.Element {
   const [data, setData] = useState<ResumeData>({
