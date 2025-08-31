@@ -24,6 +24,7 @@ const HeroHeader = () => {
         window.addEventListener('scroll', handleScroll)
         return () => window.removeEventListener('scroll', handleScroll)
     }, [])
+    const { user, isLoaded } = useUser();
     return (
         <header>
             <nav
@@ -108,7 +109,6 @@ const HeroHeader = () => {
                                 <SignedIn>
                                     <div className="flex items-center gap-2">
                                         {(() => {
-                                            const { user, isLoaded } = useUser();
                                             if (!isLoaded) return <span>Loading...</span>;
                                             return (
                                                 <>
