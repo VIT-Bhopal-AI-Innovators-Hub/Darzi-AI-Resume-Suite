@@ -34,13 +34,6 @@ class LLMManager:
             logger.error(f"Failed to initialize Gemini provider: {e}")
         
         # Add other providers here in the future
-        # Example:
-        # try:
-        #     openai_provider = OpenAIProvider()
-        #     if openai_provider.is_available():
-        #         self.providers.append(openai_provider)
-        # except Exception as e:
-        #     logger.error(f"Failed to initialize OpenAI provider: {e}")
         
         if not self.providers:
             logger.warning("No LLM providers available")
@@ -77,6 +70,8 @@ Analyze the resume text and extract ALL information into a flexible JSON structu
 5. Preserve all context and details
 6. Use consistent date formats (YYYY-MM-DD, YYYY-MM, or YYYY)
 7. Group related information logically
+8. **IMPORTANT: Do NOT include empty fields, arrays, or objects. Only include sections that have actual data.**
+9. **IMPORTANT: Do NOT add predefined empty fields like empty skills arrays, certifications arrays, etc.**
 
 **DYNAMIC APPROACH:**
 - If you see contact info → create "contact_information" or "personal_details"
@@ -89,23 +84,22 @@ Analyze the resume text and extract ALL information into a flexible JSON structu
 - If you see publications → create "publications" or "research"
 - If you see volunteer work → create "volunteer_experience"
 - Create any other sections you discover
+- **Only create sections that actually have data in the resume**
 
 **JSON STRUCTURE PRINCIPLES:**
-- Use arrays for lists (experiences, skills, education, etc.)
-- Use objects for grouped information (contact details, individual jobs, etc.)
+- Use arrays for lists (experiences, skills, education, etc.) only when data exists
+- Use objects for grouped information (contact details, individual jobs, etc.) only when data exists
 - Include all available details
 - Maintain hierarchical relationships
-- Add confidence indicators if uncertain
+- Do not add empty placeholders
 
-**EXAMPLE DYNAMIC OUTPUT:**
+**EXAMPLE DYNAMIC OUTPUT (only showing fields that exist):**
 {{
   "contact_information": {{
     "full_name": "John Doe",
     "email": "john@email.com",
     "phone": "+1-555-0123",
-    "location": "San Francisco, CA",
-    "linkedin": "linkedin.com/in/johndoe",
-    "portfolio": "johndoe.com"
+    "location": "San Francisco, CA"
   }},
   "professional_summary": "Experienced software engineer...",
   "work_experience": [
@@ -113,49 +107,26 @@ Analyze the resume text and extract ALL information into a flexible JSON structu
       "company": "Tech Corp",
       "position": "Senior Developer",
       "duration": "2020-2023",
-      "location": "Remote",
-      "responsibilities": ["Built scalable systems", "Led team of 5"],
-      "achievements": ["Increased performance by 40%"]
+      "responsibilities": ["Built scalable systems", "Led team of 5"]
     }}
   ],
   "education": [
     {{
       "institution": "University of Technology",
-      "degree": "Bachelor of Science",
-      "field": "Computer Science",
-      "graduation_year": "2019",
-      "gpa": "3.8/4.0"
+      "degree": "Bachelor of Science in Computer Science",
+      "graduation_year": "2019"
     }}
   ],
   "technical_skills": {{
-    "programming_languages": ["Python", "JavaScript", "Java"],
-    "frameworks": ["React", "Django", "Spring"],
-    "databases": ["PostgreSQL", "MongoDB"],
-    "cloud_platforms": ["AWS", "GCP"],
-    "tools": ["Docker", "Kubernetes", "Git"]
-  }},
-  "projects": [
-    {{
-      "name": "E-commerce Platform",
-      "description": "Built full-stack application",
-      "technologies": ["React", "Node.js", "MongoDB"],
-      "url": "github.com/johndoe/ecommerce"
-    }}
-  ],
-  "certifications": [
-    {{
-      "name": "AWS Solutions Architect",
-      "issuing_organization": "Amazon",
-      "date_obtained": "2022-06",
-      "credential_id": "ABC123"
-    }}
-  ]
+    "programming_languages": ["Python", "JavaScript"],
+    "tools": ["Docker", "Git"]
+  }}
 }}
 
 **RESUME TEXT TO ANALYZE:**
 {text}
 
-**OUTPUT (JSON ONLY):**
+**OUTPUT (JSON ONLY - include only sections with actual data):**
 """
     
     def _clean_llm_response(self, response_text: str) -> str:

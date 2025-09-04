@@ -37,8 +37,10 @@ if __name__ == "__main__":
     # Get configuration from environment
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", "7860"))
-    workers = int(os.getenv("UVICORN_WORKERS", "1"))
+    workers = int(os.getenv("WORKERS", "1"))
     reload = os.getenv("DEBUG", "false").lower() == "true"
+    timeout_keep_alive = int(os.getenv("TIMEOUT_KEEP_ALIVE", "30"))
+    limit_max_requests = int(os.getenv("LIMIT_MAX_REQUESTS", "1000"))
     
     logger.info(f"🚀 Starting Darzi AI Resume Suite API server")
     logger.info(f"📡 Host: {host}:{port}")
@@ -51,6 +53,7 @@ if __name__ == "__main__":
         port=port,
         workers=workers,
         reload=reload,
-        timeout_keep_alive=30,
+        timeout_keep_alive=timeout_keep_alive,
+        limit_max_requests=limit_max_requests,
         access_log=True
     )

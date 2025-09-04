@@ -1,11 +1,50 @@
 version: '3.8'
+
 services:
-  compile:
-    build: ./backend/server
+  # Main API Service
+  api:
+    build: 
+      context: ./backend/api
+      dockerfile: Dockerfile
     ports:
-      - '58404:58404'
-    
+      - '7860:7860'
+    environment:
+      - PORT=7860
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - LOG_LEVEL=INFO
+    env_file:
+      - ./backend/api/.env
+    volumes:
+      - ./backend/api/src:/code/src:ro 
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:7860/health', timeout=5).raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     deploy:
       resources:
         limits:
-          memory: 1536M
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Frontend Service (if needed)
+  frontend:
+    build: ./frontend
+    ports:
+      - '3000:3000'
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:7860
+    depends_on:
+      - api
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
