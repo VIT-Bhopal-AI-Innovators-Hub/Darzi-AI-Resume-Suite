@@ -19,7 +19,17 @@ export type ResumeData = {
     start?: string;
     end?: string;
   }>;
+  projects?: Array<{
+    name?: string;
+    technologies?: string;
+    link?: string;
+    description?: string;
+  }>;
   skills?: string[];
+  customSections?: Array<{
+    title?: string;
+    content?: string;
+  }>;
   links?: Array<{
     label?: string;
     url?: string;
@@ -78,6 +88,7 @@ export function generateResumeTex(
     fontFamily?: 'serif' | 'sans-serif' | 'mono';
     primaryColor?: string;
     secondaryColor?: string;
+    sectionOrder?: string[];
   }
 ): string {
   
@@ -146,6 +157,39 @@ export function generateResumeTex(
     })
     .join('\n\\vspace{2mm}\n');
 
+  const projects = (data.projects || [])
+    .filter(proj => proj && (proj.name?.trim() || proj.description?.trim()))
+    .map((proj) => {
+      const name = escapeLatex(proj.name?.trim() || '');
+      const technologies = escapeLatex(proj.technologies?.trim() || '');
+      const link = escapeLatex(proj.link?.trim() || '');
+      const description = escapeLatex(proj.description?.trim() || '');
+      
+      let projectHeader = name;
+      if (link) {
+        projectHeader = `\\href{${link}}{${name}}`;
+      }
+      
+      let projectLine = `\\textbf{${projectHeader}}`;
+      if (technologies) {
+        projectLine += ` \\\\ \\small\\textit{${technologies}}`;
+      }
+      if (description) {
+        projectLine += ` \\\\ ${description}`;
+      }
+      
+      return projectLine;
+    })
+    .join('\n\\vspace{2mm}\n');
+
+  const customSections = (data.customSections || [])
+    .filter(section => section && (section.title?.trim() || section.content?.trim()))
+    .map((section) => {
+      const title = escapeLatex(section.title?.trim() || 'Custom Section');
+      const content = escapeLatex(section.content?.trim() || '');
+      return { title, content };
+    });
+
   
   // Create colored contact line that handles hyperlinks properly
   const coloredContactParts = [email, phone, location, website].filter(part => part).map(part => `\\color{secondarycolor}${part}`);
@@ -173,6 +217,30 @@ export function generateResumeTex(
     hasSkills: !!skillsList
   });
 
+  // Generate sections in the specified order
+  const sectionOrder = options?.sectionOrder || ['skills', 'experience', 'projects', 'education'];
+  const generateOrderedSections = (isColored: boolean = false) => {
+    const sectionMap: { [key: string]: string } = {
+      'skills': skillsList ? `\\section*{${isColored ? '\\color{primarycolor}' : ''}Skills}\n${skillsList}` : '',
+      'experience': experiences ? `\\section*{${isColored ? '\\color{primarycolor}' : ''}Experience}\n${experiences}` : '',
+      'projects': projects ? `\\section*{${isColored ? '\\color{primarycolor}' : ''}Projects}\n${projects}` : '',
+      'education': education ? `\\section*{${isColored ? '\\color{primarycolor}' : ''}Education}\n${education}` : '',
+    };
+    
+    // Add custom sections to the map
+    customSections.forEach((section) => {
+      if (section.title && section.content) {
+        const sectionKey = `custom-${section.title.toLowerCase().replace(/\s+/g, '-')}`;
+        sectionMap[sectionKey] = `\\section*{${isColored ? '\\color{primarycolor}' : ''}${section.title}}\n${section.content}`;
+      }
+    });
+    
+    return sectionOrder
+      .map(sectionType => sectionMap[sectionType])
+      .filter(section => section)
+      .join('\n\n');
+  };
+
   let latexTemplate: string;
 
   switch (template) {
@@ -199,11 +267,7 @@ ${coloredFullContactLine ? `${coloredFullContactLine} \\\\` : ''}
 
 ${summary ? `\\vspace{3mm}\\noindent ${summary} \\vspace{4mm}` : ''}
 
-${experiences ? `\\section*{Experience}\n${experiences}` : ''}
-
-${education ? `\\section*{Education}\n${education}` : ''}
-
-${skillsList ? `\\section*{Skills}\n${skillsList}` : ''}
+${generateOrderedSections()}
 
 \\end{document}`;
       break;
@@ -230,11 +294,7 @@ ${fontFamily === 'mono' ? '\\renewcommand{\\familydefault}{\\ttdefault}' : ''}
 
 ${summary ? `\\vspace{3mm}\\noindent ${summary} \\vspace{4mm}` : ''}
 
-${experiences ? `\\section*{Experience}\n${experiences}` : ''}
-
-${education ? `\\section*{Education}\n${education}` : ''}
-
-${skillsList ? `\\section*{Skills}\n${skillsList}` : ''}
+${generateOrderedSections()}
 
 \\end{document}`;
       break;
@@ -261,11 +321,7 @@ ${coloredFullContactLine ? `${coloredFullContactLine} \\\\` : ''}
 
 ${summary ? `\\vspace{3mm}\\noindent ${summary} \\vspace{4mm}` : ''}
 
-${experiences ? `\\section*{\\color{primarycolor}Experience}\n${experiences}` : ''}
-
-${education ? `\\section*{\\color{primarycolor}Education}\n${education}` : ''}
-
-${skillsList ? `\\section*{\\color{primarycolor}Skills}\n${skillsList}` : ''}
+${generateOrderedSections(true)}
 
 \\end{document}`;
       break;
@@ -292,11 +348,7 @@ ${fontFamily === 'mono' ? '\\renewcommand{\\familydefault}{\\ttdefault}' : ''}
 
 ${summary ? `\\vspace{3mm}\\noindent \\color{primarycolor}${summary} \\vspace{4mm}` : ''}
 
-${experiences ? `\\section*{\\color{primarycolor}Experience}\n${experiences}` : ''}
-
-${education ? `\\section*{\\color{primarycolor}Education}\n${education}` : ''}
-
-${skillsList ? `\\section*{\\color{primarycolor}Skills}\n\\color{primarycolor}${skillsList}` : ''}
+${generateOrderedSections(true)}
 
 \\end{document}`;
   }
