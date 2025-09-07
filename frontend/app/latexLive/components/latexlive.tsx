@@ -1,230 +1,386 @@
-'use client'
+"use client";
 
-import { generateResumeTex, ResumeData } from '@/lib/latexTemplate'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import type { JSX } from 'react'
-import ProfessionalResume from '@/app/templates/ProfessionalResume'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import dynamic from 'next/dynamic'
+import React, { useState, useCallback, useRef, useEffect } from "react";
+import dynamic from "next/dynamic";
+import { Eye, X, Download, Code, RefreshCw, Save, User, Menu } from "lucide-react";
+import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
+import { ResumeData, generateResumeTex } from "@/lib/latexTemplate";
+import ReconnectingWebSocket from '@/lib/reconnectingWebsocket';
+import { UserDataService } from "@/lib/userDataService";
+import { useAutoSave } from "@/lib/hooks/useAutoSave";
+import Sidebar from "@/components/main/sidebar";
+import Header from "@/components/main/header";
+import FooterSection from "@/components/footer";
 
-const Editor = dynamic(() => import('@monaco-editor/react'), {
+// Form Components
+import TemplateSelector from "./forms/TemplateSelector";
+import BasicInfoForm from "./forms/BasicInfoForm";
+import ExperienceForm from "./forms/ExperienceForm";
+import EducationForm from "./forms/EducationForm";
+import SkillsForm from "./forms/SkillsForm";
+import LinksForm from "./forms/LinksForm";
+import CustomSectionsForm from "./forms/CustomSectionsForm";
+
+// Template Components
+import ClassicResume from "./templates/ClassicResume";
+import ModernResume from "./templates/ModernResume";
+import CreativeResume from "./templates/CreativeResume";
+import MinimalistResume from "./templates/MinimalistResume";
+
+const Editor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
   loading: () => (
     <div className="h-full flex items-center justify-center bg-gray-800 text-gray-300">
       <div className="text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto mb-2"></div>
         <p>Loading Monaco Editor...</p>
-        <p className="text-sm text-gray-400 mt-1">This may take a moment on first load</p>
+        <p className="text-sm text-gray-400 mt-1">
+          This may take a moment on first load
+        </p>
       </div>
     </div>
-  )
-})
+  ),
+});
 
-const WS_URL ='wss://ayush-003-latexwebsocket.hf.space'
+const WS_URL = "wss://ayush-003-latexwebsocket.hf.space";
 
-export default function ResumeGenerator(): JSX.Element {
+export default function ResumeGenerator() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [data, setData] = useState<ResumeData>({
-    name: '',
-    title: '',
-    email: '',
-    phone: '',
-    location: '',
-    website: '',
-    summary: '',
+    name: "",
+    title: "",
+    email: "",
+    phone: "",
+    location: "",
+    website: "",
+    summary: "",
     experiences: [],
     education: [],
     skills: [],
-    links: [],
-  })
-  const [selectedTemplate, setSelectedTemplate] = useState<'classic' | 'modern' | 'creative' | 'professional'>('classic')
-  const [pageSize, setPageSize] = useState<'a4' | 'letter'>('letter')
-  const [fontFamily, setFontFamily] = useState<'serif' | 'sans-serif' | 'mono'>('serif')
-  const [primaryColor, setPrimaryColor] = useState('#000000')
-  const [secondaryColor, setSecondaryColor] = useState('#666666')
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
-  const [log, setLog] = useState<string>('')
-  const [loading, setLoading] = useState<boolean>(false)
-  const [activeTab, setActiveTab] = useState<'preview' | 'editor' | 'rendered'>('preview')
-  const [latexCode, setLatexCode] = useState<string>('')
-  const [zoomLevel, setZoomLevel] = useState<number>(100)
-  const [canvasRef, setCanvasRef] = useState<HTMLCanvasElement | null>(null)
+  links: [],
+  customSections: [],
+  });
+  const [selectedTemplate, setSelectedTemplate] = useState<
+    "classic" | "modern" | "creative" | "professional" | "minimalist"
+  >("classic");
+  const [pageSize, setPageSize] = useState<"a4" | "letter">("letter");
+  const [fontFamily, setFontFamily] = useState<"serif" | "sans-serif" | "mono">(
+    "serif"
+  );
+  const [primaryColor, setPrimaryColor] = useState("#000000");
+  const [secondaryColor, setSecondaryColor] = useState("#666666");
+  const [sectionSpacingMm, setSectionSpacingMm] = useState<number>(3);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [log, setLog] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<"preview" | "editor" | "rendered">(
+    "preview"
+  );
+  const [latexCode, setLatexCode] = useState<string>("");
 
-  const wsRef = useRef<WebSocket | null>(null)
-  const debounceRef = useRef<number | null>(null)
-  const pdfUrlRef = useRef<string | null>(null)
-  const reconnectTimeoutRef = useRef<number | null>(null)
-  const reconnectAttemptsRef = useRef<number>(0)
-  const maxReconnectAttempts = 5
+  // New state for data management
+  const [isLoadingUserData, setIsLoadingUserData] = useState<boolean>(false);
+  const [isSavingUserData, setIsSavingUserData] = useState<boolean>(false);
+  const [dataLoadError, setDataLoadError] = useState<string | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
+  const [isDataLoaded, setIsDataLoaded] = useState<boolean>(false);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState<boolean>(true);
 
-  const [logOpen, setLogOpen] = useState<boolean>(false)
+  const wsRef = useRef<ReconnectingWebSocket | null>(null);
+  const debounceRef = useRef<number | null>(null);
+  const pdfUrlRef = useRef<string | null>(null);
+  const reconnectTimeoutRef = useRef<number | null>(null);
+  const reconnectAttemptsRef = useRef<number>(0);
+  // removed unused maxReconnectAttempts: ReconnectingWebSocket handles backoff internally
 
-  const connectWebSocket = useCallback(() => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      return // Already connected
-    }
+  const [logOpen, setLogOpen] = useState<boolean>(false);
+  const [mobilePreviewOpen, setMobilePreviewOpen] = useState<boolean>(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
 
-    const ws = new WebSocket(WS_URL)
-    wsRef.current = ws
-
-    ws.onopen = () => {
-      setLog((s) => s + '\nWS connected')
-      reconnectAttemptsRef.current = 0 
-    }
-    ws.onmessage = (ev: MessageEvent) => {
+  // Load user data from the service
+  const loadUserData = useCallback(async () => {
+    setIsLoadingUserData(true);
+    setDataLoadError(null);
+    try {
+      const userData = await UserDataService.fetchUserData();
+      setData(userData);
+      setIsDataLoaded(true);
+      setHasUnsavedChanges(false);
+      setLog((s) => s + "\nUser data loaded successfully");
+      
+      // Generate initial LaTeX code for the loaded data
       try {
-        const msg = JSON.parse(ev.data)
-        if (msg.type === 'progress') {
-          setLoading(true)
-          setLog((s) => s + '\n' + (msg.text || 'progress'))
-        } else if (msg.type === 'error') {
-          setLoading(false)
-          setLog((s) => s + '\nERROR: ' + msg.message)
-        } else if (msg.type === 'pdf') {
-          setLoading(false)
-          const arr = Uint8Array.from(atob(msg.base64), (c) => c.charCodeAt(0))
-          const blob = new Blob([arr], { type: 'application/pdf' })
-          const url = URL.createObjectURL(blob)
-          try {
-            if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current)
-          } catch {
-            /* ignore */
-          }
-    
-          pdfUrlRef.current = url
-          setPdfUrl(url)
-          setLog((s) => s + '\nPDF received')
-        }
-      } catch (e) {
-        setLoading(false)
-        setLog((s) => s + '\nMSG ERR: ' + String(e))
-      }
-    }
-
-    ws.onclose = () => {
-      setLog((s) => s + '\nWS closed')
-
-      if (reconnectAttemptsRef.current < maxReconnectAttempts) {
-        reconnectAttemptsRef.current++
-        const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000) // Exponential backoff, max 30s
-        setLog((s) => s + `\nAttempting to reconnect (${reconnectAttemptsRef.current}/${maxReconnectAttempts}) in ${delay/1000}s...`)
-        reconnectTimeoutRef.current = window.setTimeout(() => {
-          connectWebSocket()
-        }, delay)
-      } else {
-        setLog((s) => s + '\nMax reconnection attempts reached. Please refresh the page.')
-      }
-    }
-    ws.onerror = () => setLog((s) => s + '\nWS error')
-  }, [])
-
-  useEffect(() => {
-    connectWebSocket()
-
-    return () => {
-      if (reconnectTimeoutRef.current) {
-        window.clearTimeout(reconnectTimeoutRef.current)
-      }
-      if (wsRef.current) {
-        wsRef.current.close()
-      }
-      if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current)
-    }
-  }, [connectWebSocket])
-
-  useEffect(() => {
-    if (canvasRef && pdfUrl) {
-      const canvas = canvasRef
-      const ctx = canvas.getContext('2d')
-      if (ctx) {
-        canvas.width = 595
-        canvas.height = 842
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-      }
-    }
-  }, [canvasRef, pdfUrl, zoomLevel])
-
-  const scheduleBuild = useCallback((latest: ResumeData, tmpl: typeof selectedTemplate = selectedTemplate) => {
-    if (debounceRef.current) window.clearTimeout(debounceRef.current)
-    debounceRef.current = window.setTimeout(() => {
-      try {
-        console.log('Building with template:', tmpl)
-        const tex = generateResumeTex(latest, tmpl, {
+        const tex = generateResumeTex(userData, selectedTemplate, {
           pageSize,
           fontFamily,
           primaryColor,
-          secondaryColor
-        })
-        setLatexCode(tex)
-        wsRef.current?.send(JSON.stringify({ type: 'edit', tex }))
-        setLog((s) => s + '\nSent build request')
+          secondaryColor,
+          sectionSpacingMm,
+        });
+        setLatexCode(tex);
+        setLog((s) => s + "\nGenerated LaTeX code for loaded data");
       } catch (error) {
-        setLog((s) => s + '\nERROR: ' + (error instanceof Error ? error.message : 'Failed to generate LaTeX'))
-        setLoading(false)
+        console.error("Error generating initial LaTeX:", error);
+        setLog((s) => s + "\nError generating initial LaTeX: " + (error instanceof Error ? error.message : "Unknown error"));
       }
-    }, 700) as unknown as number
-  }, [pageSize, fontFamily, primaryColor, secondaryColor, selectedTemplate])
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to load user data";
+      setDataLoadError(errorMessage);
+      setLog((s) => s + "\nError loading user data: " + errorMessage);
+    } finally {
+      setIsLoadingUserData(false);
+    }
+  }, [selectedTemplate, pageSize, fontFamily, primaryColor, secondaryColor, sectionSpacingMm]);
 
-  function updateField<K extends keyof ResumeData>(key: K, value: ResumeData[K]) {
+  // Save user data to the service
+  const saveUserData = useCallback(async () => {
+    setIsSavingUserData(true);
+    try {
+      await UserDataService.saveUserData(data);
+      setHasUnsavedChanges(false);
+      setLog((s) => s + "\nUser data saved successfully");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to save user data";
+      setLog((s) => s + "\nError saving user data: " + errorMessage);
+    } finally {
+      setIsSavingUserData(false);
+    }
+  }, [data]);
+
+  // Load user data on component mount
+  useEffect(() => {
+    loadUserData();
+  }, [loadUserData]);
+
+  // Auto-save functionality
+  useAutoSave({
+    data,
+    onSave: saveUserData,
+    delay: 3000, // Auto-save every 3 seconds
+    enabled: autoSaveEnabled && hasUnsavedChanges && isDataLoaded,
+  });
+
+  // Handle manual LaTeX code changes
+  const handleLatexCodeChange = useCallback((value: string | undefined) => {
+    const newCode = value || "";
+    setLatexCode(newCode);
+    
+    // Debounce sending the code to WebSocket to avoid too many requests
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: "edit", tex: newCode }));
+        setLog((s) => s + "\\nSent manual edit to build");
+      }
+    }, 1000) as unknown as number;
+  }, []);
+
+  const connectWebSocket = useCallback(() => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) return;
+
+    const rws = new ReconnectingWebSocket(WS_URL);
+    wsRef.current = rws;
+
+    rws.onopen = () => {
+      setLog((s) => s + "\nWS connected");
+      reconnectAttemptsRef.current = 0;
+    };
+
+    rws.onmessage = (ev: MessageEvent) => {
+      try {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === "progress") {
+          setLoading(true);
+          setLog((s) => s + "\n" + (msg.text || "progress"));
+        } else if (msg.type === "error") {
+          setLoading(false);
+          setLog((s) => s + "\nERROR: " + msg.message);
+        } else if (msg.type === "pdf") {
+          setLoading(false);
+          const arr = Uint8Array.from(atob(msg.base64), (c) => c.charCodeAt(0));
+          const blob = new Blob([arr], { type: "application/pdf" });
+          const url = URL.createObjectURL(blob);
+          if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
+          pdfUrlRef.current = url;
+          setPdfUrl(url);
+          setLog((s) => s + "\nPDF received");
+        }
+      } catch (e) {
+        setLoading(false);
+        setLog((s) => s + "\nMSG ERR: " + String(e));
+      }
+    };
+
+    rws.onclose = () => {
+      setLog((s) => s + "\nWS closed");
+    };
+
+    rws.onerror = () => setLog((s) => s + "\nWS error");
+  }, []);
+
+  useEffect(() => {
+    connectWebSocket();
+    const currentTimeout = reconnectTimeoutRef.current;
+
+    return () => {
+      if (currentTimeout) window.clearTimeout(currentTimeout);
+      if (wsRef.current) wsRef.current.close();
+      if (pdfUrlRef.current) URL.revokeObjectURL(pdfUrlRef.current);
+    };
+  }, [connectWebSocket]);
+
+  const scheduleBuild = useCallback(
+    (
+      latest: ResumeData,
+      tmpl: typeof selectedTemplate = selectedTemplate
+    ) => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+      debounceRef.current = window.setTimeout(() => {
+        try {
+          console.log("Building with template:", tmpl);
+          const tex = generateResumeTex(latest, tmpl, {
+            pageSize,
+            fontFamily,
+            primaryColor,
+            secondaryColor,
+            sectionSpacingMm,
+          });
+          setLatexCode(tex);
+          wsRef.current?.send(JSON.stringify({ type: "edit", tex }));
+          setLog((s) => s + "\\nSent build request");
+        } catch (error) {
+          setLog(
+            (s) =>
+              s +
+              "\\nERROR: " +
+              (error instanceof Error
+                ? error.message
+                : "Failed to generate LaTeX")
+          );
+          setLoading(false);
+        }
+      }, 700) as unknown as number;
+    },
+  [pageSize, fontFamily, primaryColor, secondaryColor, selectedTemplate, sectionSpacingMm]
+  );
+
+  function updateField<K extends keyof ResumeData>(
+    key: K,
+    value: ResumeData[K]
+  ) {
     setData((prev) => {
-      const next = { ...prev, [key]: value }
-  scheduleBuild(next, selectedTemplate)
-      return next
-    })
+      const next = { ...prev, [key]: value };
+      setHasUnsavedChanges(true);
+      scheduleBuild(next, selectedTemplate);
+      return next;
+    });
   }
+
   useEffect(() => {
     if (pdfUrlRef.current) {
       try {
-        URL.revokeObjectURL(pdfUrlRef.current)
+        URL.revokeObjectURL(pdfUrlRef.current);
       } catch {
         /* ignore */
       }
-      pdfUrlRef.current = null
+      pdfUrlRef.current = null;
     }
-    setPdfUrl(null)
-    setLoading(true)
-    setLog((s) => s + '\nTemplate/style changed — rebuilding')
-  scheduleBuild(data, selectedTemplate)
-  }, [selectedTemplate, pageSize, fontFamily, primaryColor, secondaryColor, data, scheduleBuild])
+    setPdfUrl(null);
+    setLoading(true);
+    setLog((s) => s + "\\nTemplate/style changed — rebuilding");
+    
+    // Immediately update LaTeX code for the new template
+    try {
+      const tex = generateResumeTex(data, selectedTemplate, {
+        pageSize,
+        fontFamily,
+        primaryColor,
+        secondaryColor,
+          sectionSpacingMm,
+      });
+      setLatexCode(tex);
+    } catch (error) {
+      console.error("Error generating LaTeX for template change:", error);
+    }
+    
+    scheduleBuild(data, selectedTemplate);
+  }, [selectedTemplate, pageSize, fontFamily, primaryColor, secondaryColor, data, scheduleBuild, sectionSpacingMm]);
 
   function addExperience() {
     setData((prev) => {
       const next = {
         ...prev,
-        experiences: [...prev.experiences, { company: '', role: '', bullets: [''] }],
-      }
-  scheduleBuild(next, selectedTemplate)
-      return next
-    })
+        experiences: [
+          ...prev.experiences,
+          { company: "", role: "", bullets: [""] },
+        ],
+      };
+      setHasUnsavedChanges(true);
+      scheduleBuild(next, selectedTemplate);
+      return next;
+    });
   }
 
-  function updateExperience(index: number, patch: Partial<ResumeData['experiences'][number]>) {
+  function updateExperience(
+    index: number,
+    patch: Partial<ResumeData["experiences"][number]>
+  ) {
     setData((prev) => {
-      const arr = [...prev.experiences]
-      arr[index] = { ...arr[index], ...patch }
-      const next = { ...prev, experiences: arr }
-  scheduleBuild(next, selectedTemplate)
-      return next
-    })
+      const arr = [...prev.experiences];
+      arr[index] = { ...arr[index], ...patch };
+      const next = { ...prev, experiences: arr };
+      setHasUnsavedChanges(true);
+      scheduleBuild(next, selectedTemplate);
+      return next;
+    });
+  }
+  
+  function removeExperience(index: number) {
+    setData((prev) => {
+      const newExperiences = [...prev.experiences];
+      newExperiences.splice(index, 1);
+      const next = { ...prev, experiences: newExperiences };
+      setHasUnsavedChanges(true);
+      scheduleBuild(next, selectedTemplate);
+      return next;
+    });
   }
 
   function addEducation() {
     setData((prev) => {
-      const next = { ...prev, education: [...prev.education, { school: '', degree: '' }] }
-  scheduleBuild(next, selectedTemplate)
-      return next
-    })
+      const next = {
+        ...prev,
+        education: [...prev.education, { school: "", degree: "" }],
+      };
+      setHasUnsavedChanges(true);
+      scheduleBuild(next, selectedTemplate);
+      return next;
+    });
   }
 
-  function updateEducation(index: number, patch: Partial<ResumeData['education'][number]>) {
+  function updateEducation(
+    index: number,
+    patch: Partial<ResumeData["education"][number]>
+  ) {
     setData((prev) => {
-      const arr = [...prev.education]
-      arr[index] = { ...arr[index], ...patch }
-      const next = { ...prev, education: arr }
-  scheduleBuild(next, selectedTemplate)
-      return next
-    })
+      const arr = [...prev.education];
+      arr[index] = { ...arr[index], ...patch };
+      const next = { ...prev, education: arr };
+      setHasUnsavedChanges(true);
+      scheduleBuild(next, selectedTemplate);
+      return next;
+    });
+  }
+
+  function removeEducation(index: number) {
+    setData((prev) => {
+      const newEducation = [...prev.education];
+      newEducation.splice(index, 1);
+      const next = { ...prev, education: newEducation };
+      setHasUnsavedChanges(true);
+      scheduleBuild(next, selectedTemplate);
+      return next;
+    });
   }
 
   const renderTemplate = () => {
@@ -233,798 +389,378 @@ export default function ResumeGenerator(): JSX.Element {
       pageSize,
       fontFamily,
       primaryColor,
-      secondaryColor
-    }
+      secondaryColor,
+    sectionSpacingMm,
+    };
 
     switch (selectedTemplate) {
-      case 'professional':
-        return <ProfessionalResume {...templateProps} />
+      case "classic":
+        return <ClassicResume {...templateProps} />;
+      case "modern":
+        return <ModernResume {...templateProps} />;
+      case "creative":
+        return <CreativeResume {...templateProps} />;
+      case "minimalist":
+        return <MinimalistResume {...templateProps} />;
       default:
-        return <ProfessionalResume {...templateProps} />
+        return <ClassicResume {...templateProps} />;
     }
-  }
+  };
 
   return (
-    <div className="flex h-screen bg-gray-900 text-gray-100 p-2">
-      {/* Left Side - Form */}
-      <div className="w-1/4 p-4 overflow-auto bg-gray-800 rounded-xl shadow-lg border border-gray-700">
-        <h2 className="mb-5 font-bold text-2xl tracking-tight">Resume Builder</h2>
-
-        <label className="font-medium">Template</label>
-        <select
-          className="w-full mt-1 mb-3 px-3 py-2 border border-gray-600 bg-gray-900 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-          value={selectedTemplate}
-          onChange={(e) => setSelectedTemplate(e.target.value as 'classic' | 'modern' | 'creative' | 'professional')}
-        >
-          <option value="classic">Classic</option>
-          <option value="modern">Modern</option>
-          <option value="creative">Creative</option>
-          <option value="professional">Professional</option>
-        </select>
-
-        <label className="font-medium">Page Size</label>
-        <select
-          className="w-full mt-1 mb-3 px-3 py-2 border border-gray-600 bg-gray-900 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-          value={pageSize}
-          onChange={(e) => setPageSize(e.target.value as 'a4' | 'letter')}
-        >
-          <option value="letter">Letter (8.5×11 in)</option>
-          <option value="a4">A4 (8.27×11.69 in)</option>
-        </select>
-
-        <label className="font-medium">Font Family</label>
-        <select
-          className="w-full mt-1 mb-3 px-3 py-2 border border-gray-600 bg-gray-900 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-          value={fontFamily}
-          onChange={(e) => setFontFamily(e.target.value as 'serif' | 'sans-serif' | 'mono')}
-        >
-          <option value="serif">Serif</option>
-          <option value="sans-serif">Sans Serif</option>
-          <option value="mono">Monospace</option>
-        </select>
-
-        <div className="grid grid-cols-2 gap-2 mb-3">
-          <div>
-            <label className="font-medium block">Primary Color</label>
-            <input
-              type="color"
-              className="w-full mt-1 h-10 border border-gray-600 bg-gray-900 cursor-pointer"
-              value={primaryColor}
-              onChange={(e) => setPrimaryColor(e.target.value)}
-            />
+    <>
+      <SignedIn>
+        <div className="bg-black text-white min-h-screen font-sans">
+          <div className="hidden lg:block">
+            <Sidebar onToggle={setSidebarCollapsed} />
           </div>
-          <div>
-            <label className="font-medium block">Secondary Color</label>
-            <input
-              type="color"
-              className="w-full mt-1 h-10 border border-gray-600 bg-gray-900 cursor-pointer"
-              value={secondaryColor}
-              onChange={(e) => setSecondaryColor(e.target.value)}
-            />
-          </div>
-        </div>
 
-        <label className="font-medium">
-          Name <span className="text-red-400">*</span>
-        </label>
-        <input
-          className={`w-full mt-1 mb-3 px-3 py-2 border bg-gray-900 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
-            !data.name || data.name.trim() === ''
-              ? 'border-red-500 focus:ring-red-500'
-              : 'border-gray-600'
-          }`}
-          value={data.name}
-          onChange={(e) => updateField('name', e.target.value)}
-          placeholder="Enter your full name"
-        />
-
-        <label className="font-medium">Title</label>
-        <input
-          className="w-full mt-1 mb-3 px-3 py-2 border border-gray-600 bg-gray-900 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-          value={data.title}
-          onChange={(e) => updateField('title', e.target.value)}
-        />
-
-        <label className="font-medium">Summary</label>
-        <textarea
-          className="w-full mt-1 mb-3 px-3 py-2 border border-gray-600 bg-gray-900 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors resize-y"
-          rows={4}
-          value={data.summary}
-          onChange={(e) => updateField('summary', e.target.value)}
-        />
-
-        <label className="font-medium">Email</label>
-        <Input
-          className="w-full mt-1 mb-3 bg-gray-900 text-gray-100 border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-          value={data.email || ''}
-          onChange={(e) => updateField('email', e.target.value)}
-          placeholder="Enter your email"
-        />
-
-        <label className="font-medium">Phone</label>
-        <Input
-          className="w-full mt-1 mb-3 bg-gray-900 text-gray-100 border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-          value={data.phone || ''}
-          onChange={(e) => updateField('phone', e.target.value)}
-          placeholder="Enter your phone number"
-        />
-
-        <label className="font-medium">Location</label>
-        <Input
-          className="w-full mt-1 mb-3 bg-gray-900 text-gray-100 border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-          value={data.location || ''}
-          onChange={(e) => updateField('location', e.target.value)}
-          placeholder="Enter your location"
-        />
-
-        <label className="font-medium">Website</label>
-        <Input
-          className="w-full mt-1 mb-3 bg-gray-900 text-gray-100 border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-          value={data.website || ''}
-          onChange={(e) => updateField('website', e.target.value)}
-          placeholder="Enter your website URL"
-        />
-
-        <div className="mb-4">
-          <div className="flex justify-between items-center mb-2">
-            <label className="font-medium">Experience</label>
-            <Button
-              onClick={addExperience}
-              variant="outline"
-              size="sm"
-              className="bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 transition-colors"
-            >
-              Add Experience
-            </Button>
-          </div>
-          {data.experiences?.map((exp, index) => (
-            <div key={index} className="mb-3 p-3 border border-gray-600 rounded-md bg-gray-800">
-              <div className="grid grid-cols-2 gap-2 mb-2">
-                <Input
-                  placeholder="Company"
-                  value={exp.company || ''}
-                  onChange={(e) => updateExperience(index, { company: e.target.value })}
-                  className="bg-gray-900 text-gray-100 border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                />
-                <Input
-                  placeholder="Role"
-                  value={exp.role || ''}
-                  onChange={(e) => updateExperience(index, { role: e.target.value })}
-                  className="bg-gray-900 text-gray-100 border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2 mb-2">
-                <Input
-                  placeholder="Start Date"
-                  value={exp.start || ''}
-                  onChange={(e) => updateExperience(index, { start: e.target.value })}
-                  className="bg-gray-900 text-gray-100 border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                />
-                <Input
-                  placeholder="End Date"
-                  value={exp.end || ''}
-                  onChange={(e) => updateExperience(index, { end: e.target.value })}
-                  className="bg-gray-900 text-gray-100 border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                />
-              </div>
-              <div className="mb-2">
-                <label className="text-sm text-gray-300">Bullet Points</label>
-                {exp.bullets?.map((bullet, bulletIndex) => (
-                  <div key={bulletIndex} className="flex gap-2 mb-1">
-                    <Input
-                      placeholder="Bullet point"
-                      value={bullet}
-                      onChange={(e) => {
-                        const newBullets = [...(exp.bullets || [])]
-                        newBullets[bulletIndex] = e.target.value
-                        updateExperience(index, { bullets: newBullets })
-                      }}
-                      className="bg-gray-900 text-gray-100 border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                    />
-                    <Button
-                      onClick={() => {
-                        const newBullets = [...(exp.bullets || [])]
-                        newBullets.splice(bulletIndex, 1)
-                        updateExperience(index, { bullets: newBullets })
-                      }}
-                      variant="outline"
-                      size="sm"
-                      className="bg-red-700 text-white border-red-600 hover:bg-red-600"
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  onClick={() => {
-                    const newBullets = [...(exp.bullets || []), '']
-                    updateExperience(index, { bullets: newBullets })
-                  }}
-                  variant="outline"
-                  size="sm"
-                  className="bg-gray-700 text-gray-100 border-gray-600 hover:bg-gray-600 transition-colors"
-                >
-                  Add Bullet
-                </Button>
-              </div>
-              <Button
-                onClick={() => {
-                  const newExperiences = [...(data.experiences || [])]
-                  newExperiences.splice(index, 1)
-                  setData((prev) => {
-                    const next = { ...prev, experiences: newExperiences }
-                    scheduleBuild(next)
-                    return next
-                  })
-                }}
-                variant="outline"
-                size="sm"
-                className="bg-red-700 text-white border-red-600 hover:bg-red-600"
-              >
-                Remove Experience
-              </Button>
-            </div>
-          ))}
-        </div>
-
-        <div className="mb-4">
-          <div className="flex justify-between items-center mb-2">
-            <label className="font-medium">Education</label>
-            <Button
-              onClick={addEducation}
-              variant="outline"
-              size="sm"
-              className="bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 transition-colors"
-            >
-              Add Education
-            </Button>
-          </div>
-          {data.education?.map((edu, index) => (
-            <div key={index} className="mb-3 p-3 border border-gray-600 rounded-md bg-gray-800">
-              <div className="grid grid-cols-2 gap-2 mb-2">
-                <Input
-                  placeholder="School"
-                  value={edu.school || ''}
-                  onChange={(e) => updateEducation(index, { school: e.target.value })}
-                  className="bg-gray-900 text-gray-100 border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                />
-                <Input
-                  placeholder="Degree"
-                  value={edu.degree || ''}
-                  onChange={(e) => updateEducation(index, { degree: e.target.value })}
-                  className="bg-gray-900 text-gray-100 border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2 mb-2">
-                <Input
-                  placeholder="Start Date"
-                  value={edu.start || ''}
-                  onChange={(e) => updateEducation(index, { start: e.target.value })}
-                  className="bg-gray-900 text-gray-100 border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                />
-                <Input
-                  placeholder="End Date"
-                  value={edu.end || ''}
-                  onChange={(e) => updateEducation(index, { end: e.target.value })}
-                  className="bg-gray-900 text-gray-100 border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                />
-              </div>
-              <Button
-                onClick={() => {
-                  const newEducation = [...(data.education || [])]
-                  newEducation.splice(index, 1)
-                  setData((prev) => {
-                    const next = { ...prev, education: newEducation }
-                    scheduleBuild(next)
-                    return next
-                  })
-                }}
-                variant="outline"
-                size="sm"
-                className="bg-red-700 text-white border-red-600 hover:bg-red-600"
-              >
-                Remove Education
-              </Button>
-            </div>
-          ))}
-        </div>
-
-        <div className="mb-4">
-          <div className="flex justify-between items-center mb-2">
-            <label className="font-medium">Skills</label>
-            <Button
-              onClick={() => {
-                const newSkills = [...(data.skills || []), '']
-                setData((prev) => {
-                  const next = { ...prev, skills: newSkills }
-                  scheduleBuild(next)
-                  return next
-                })
-              }}
-              variant="outline"
-              size="sm"
-              className="bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 transition-colors"
-            >
-              Add Skill
-            </Button>
-          </div>
-          {data.skills?.map((skill, index) => (
-            <div key={index} className="flex gap-2 mb-2">
-              <Input
-                placeholder="Skill"
-                value={skill}
-                onChange={(e) => {
-                  const newSkills = [...(data.skills || [])]
-                  newSkills[index] = e.target.value
-                  setData((prev) => {
-                    const next = { ...prev, skills: newSkills }
-                    scheduleBuild(next)
-                    return next
-                  })
-                }}
-                className="bg-gray-900 text-gray-100 border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-              />
-              <Button
-                onClick={() => {
-                  const newSkills = [...(data.skills || [])]
-                  newSkills.splice(index, 1)
-                  setData((prev) => {
-                    const next = { ...prev, skills: newSkills }
-                    scheduleBuild(next)
-                    return next
-                  })
-                }}
-                variant="outline"
-                size="sm"
-                className="bg-red-700 text-white border-red-600 hover:bg-red-600"
-              >
-                Remove
-              </Button>
-            </div>
-          ))}
-        </div>
-
-        <div className="mb-4">
-          <div className="flex justify-between items-center mb-2">
-            <label className="font-medium">Additional Links</label>
-            <Button
-              onClick={() => {
-                const newLinks = [...(data.links || []), { label: '', url: '' }]
-                setData((prev) => {
-                  const next = { ...prev, links: newLinks }
-                  scheduleBuild(next)
-                  return next
-                })
-              }}
-              variant="outline"
-              size="sm"
-              className="bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 transition-colors"
-            >
-              Add Link
-            </Button>
-          </div>
-          {data.links?.map((link, index) => (
-            <div key={index} className="mb-3 p-3 border border-gray-600 rounded-md bg-gray-800">
-              <div className="grid grid-cols-2 gap-2 mb-2">
-                <Input
-                  placeholder="Label (e.g. GitHub)"
-                  value={link.label || ''}
-                  onChange={(e) => {
-                    const newLinks = [...(data.links || [])]
-                    newLinks[index] = { ...newLinks[index], label: e.target.value }
-                    setData((prev) => {
-                      const next = { ...prev, links: newLinks }
-                      scheduleBuild(next, selectedTemplate)
-                      return next
-                    })
-                  }}
-                  className="bg-gray-900 text-gray-100 border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                />
-                <Input
-                  placeholder="URL"
-                  value={link.url || ''}
-                  onChange={(e) => {
-                    const newLinks = [...(data.links || [])]
-                    newLinks[index] = { ...newLinks[index], url: e.target.value }
-                    setData((prev) => {
-                      const next = { ...prev, links: newLinks }
-                      scheduleBuild(next, selectedTemplate)
-                      return next
-                    })
-                  }}
-                  className="bg-gray-900 text-gray-100 border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                />
-              </div>
-              <Button
-                onClick={() => {
-                  const newLinks = [...(data.links || [])]
-                  newLinks.splice(index, 1)
-                  setData((prev) => {
-                    const next = { ...prev, links: newLinks }
-                      scheduleBuild(next, selectedTemplate)
-                    return next
-                  })
-                }}
-                variant="outline"
-                size="sm"
-                className="bg-red-700 text-white border-red-600 hover:bg-red-600"
-              >
-                Remove Link
-              </Button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Right Side */}
-      <div className="w-3/4 p-4 flex flex-col">
-        {/* Tabs */}
-        <div className="flex mb-4 space-x-2">
+          {/* Mobile: menu button to open sidebar as an overlay */}
           <button
-            onClick={() => setActiveTab('preview')}
-            className={`px-4 py-2 font-medium transition-colors ${activeTab === 'preview' ? 'bg-indigo-600 text-white border border-indigo-600' : 'bg-gray-800 text-gray-100 border border-gray-600 hover:bg-gray-700'}`}
+            className="fixed top-4 left-4 z-50 lg:hidden p-2 bg-white/10 text-white rounded-md shadow-md hover:bg-white/20"
+            onClick={() => setMobileSidebarOpen(true)}
+            aria-label="Open sidebar"
+            title="Open sidebar"
           >
-            Preview
+            <Menu className="h-5 w-5" />
           </button>
-          <button
-            onClick={() => setActiveTab('editor')}
-            className={`px-4 py-2 font-medium transition-colors ${activeTab === 'editor' ? 'bg-indigo-600 text-white border border-indigo-600' : 'bg-gray-800 text-gray-100 border border-gray-600 hover:bg-gray-700'}`}
-          >
-            Editor
-          </button>
-          <button
-            onClick={() => setActiveTab('rendered')}
-            className={`px-4 py-2 font-medium transition-colors ${activeTab === 'rendered' ? 'bg-indigo-600 text-white border border-indigo-600' : 'bg-gray-800 text-gray-100 border border-gray-600 hover:bg-gray-700'}`}
-          >
-            Rendered
-          </button>
-        </div>
 
-        {/* Content Area */}
-        <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden border border-gray-700 flex flex-col">
-          {activeTab === 'preview' ? (
-            <div className="h-full bg-white overflow-auto p-4 flex items-start justify-center">
-              <div className="w-full max-w-4xl px-8">
-                <div className="max-w-none">
-                  <div key={selectedTemplate}>
-                    {renderTemplate()}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : activeTab === 'editor' ? (
-            <Editor
-              height="100%"
-              language="latex"
-              value={latexCode}
-              onChange={(value) => {
-                setLatexCode(value || '')
-                // Optionally send to WS
-                wsRef.current?.send(JSON.stringify({ type: 'edit', tex: value }))
-              }}
-              theme="vs-dark"
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                lineNumbers: 'on',
-                roundedSelection: false,
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                wordWrap: 'on',
-                tabSize: 2,
-                insertSpaces: true,
-                folding: true,
-                lineDecorationsWidth: 10,
-                lineNumbersMinChars: 3,
-                renderWhitespace: 'selection',
-                cursorBlinking: 'blink',
-                cursorSmoothCaretAnimation: 'on',
-                contextmenu: true,
-                mouseWheelZoom: true,
-                multiCursorModifier: 'ctrlCmd',
-                selectOnLineNumbers: true,
-                glyphMargin: true,
-                useTabStops: true,
-                renderLineHighlight: 'line',
-                hideCursorInOverviewRuler: false,
-                overviewRulerLanes: 2,
-                overviewRulerBorder: false,
-                scrollbar: {
-                  vertical: 'visible',
-                  horizontal: 'visible',
-                  verticalScrollbarSize: 14,
-                  horizontalScrollbarSize: 14,
-                  verticalSliderSize: 14,
-                  horizontalSliderSize: 14,
-                },
-                find: {
-                  addExtraSpaceOnTop: false,
-                  autoFindInSelection: 'never',
-                  seedSearchStringFromSelection: 'never',
-                },
-                suggestOnTriggerCharacters: true,
-                acceptSuggestionOnEnter: 'on',
-                quickSuggestions: {
-                  other: true,
-                  comments: true,
-                  strings: true,
-                },
-                parameterHints: {
-                  enabled: true,
-                },
-                hover: {
-                  enabled: true,
-                },
-                bracketPairColorization: {
-                  enabled: true,
-                },
-                guides: {
-                  bracketPairs: true,
-                  indentation: true,
-                },
-                renderValidationDecorations: 'on',
-                codeLens: true,
-                colorDecorators: true,
-                showFoldingControls: 'always',
-                matchBrackets: 'always',
-                autoClosingBrackets: 'always',
-                autoClosingQuotes: 'always',
-                autoSurround: 'brackets',
-                formatOnPaste: true,
-                formatOnType: true,
-                tabCompletion: 'on',
-                wordBasedSuggestions: 'currentDocument',
-              }}
-              onMount={(editor, monaco) => {
-                // Add LaTeX-specific configurations
-                monaco.languages.setMonarchTokensProvider('latex', {
-                  tokenizer: {
-                    root: [
-                      [/%.*$/, 'comment'],
-                      [/\\[a-zA-Z]+/, 'keyword'],
-                      [/{/, 'delimiter.bracket'],
-                      [/}/, 'delimiter.bracket'],
-                      [/\$\w+\$/, 'variable'],
-                      [/\$\$[\s\S]*?\$\$/, 'string'],
-                      [/\$.*?\$/, 'string'],
-                    ]
-                  }
-                })
-
-                // Add custom theme colors for LaTeX
-                monaco.editor.defineTheme('latex-dark', {
-                  base: 'vs-dark',
-                  inherit: true,
-                  rules: [
-                    { token: 'keyword', foreground: '569cd6' },
-                    { token: 'comment', foreground: '6a9955' },
-                    { token: 'string', foreground: 'ce9178' },
-                    { token: 'variable', foreground: '9cdcfe' },
-                  ],
-                  colors: {
-                    'editor.background': '#1f2937',
-                    'editor.lineHighlightBackground': '#374151',
-                    'editor.selectionBackground': '#3b82f6',
-                    'editor.inactiveSelectionBackground': '#1e40af',
-                  }
-                })
-
-                monaco.editor.setTheme('latex-dark')
-
-                // Set initial value if available
-                if (latexCode) {
-                  editor.setValue(latexCode)
-                }
-              }}
-            />
-          ) : (
-            <div className="h-full flex flex-col">
-              {/* Rendered Preview Controls */}
-              <div className="flex items-center justify-between p-2 bg-gray-700 border-b border-gray-600">
-                <div className="flex items-center space-x-2">
+          {mobileSidebarOpen && (
+            <div
+              className="fixed inset-0 z-50 bg-black/60 flex lg:hidden"
+              onClick={() => setMobileSidebarOpen(false)}
+            >
+              <div
+                className="bg-black text-white w-72 max-w-full h-full overflow-auto border-r border-white/10"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-3 border-b border-white/5 flex items-center justify-between">
+                  <div className="text-sm font-semibold">Menu</div>
                   <button
-                    onClick={() => setZoomLevel(Math.max(25, zoomLevel - 25))}
-                    className="px-3 py-1 bg-gray-800 text-gray-100 border border-gray-600 hover:bg-gray-700 transition-colors text-sm"
-                    title="Zoom Out"
+                    onClick={() => setMobileSidebarOpen(false)}
+                    className="p-2 rounded-md bg-white/5 text-white hover:bg-white/10"
+                    aria-label="Close sidebar"
+                    title="Close sidebar"
                   >
-                    -
-                  </button>
-                  <span className="text-sm text-gray-300 min-w-[60px] text-center">
-                    {zoomLevel}%
-                  </span>
-                  <button
-                    onClick={() => setZoomLevel(Math.min(300, zoomLevel + 25))}
-                    className="px-3 py-1 bg-gray-800 text-gray-100 border border-gray-600 hover:bg-gray-700 transition-colors text-sm"
-                    title="Zoom In"
-                  >
-                    +
-                  </button>
-                  <button
-                    onClick={() => setZoomLevel(100)}
-                    className="px-3 py-1 bg-gray-800 text-gray-100 border border-gray-600 hover:bg-gray-700 transition-colors text-sm"
-                    title="Reset Zoom"
-                  >
-                    100%
-                  </button>
-                  <button
-                    onClick={() => {
-                      // Fit to width - calculate zoom level to fit PDF width to container
-                      const containerWidth = 800; // Approximate container width in pixels
-                      const pdfWidth = 595; // A4 width in points (8.27 inches * 72 points)
-                      const fitZoom = Math.floor((containerWidth / pdfWidth) * 100);
-                      setZoomLevel(Math.max(25, Math.min(300, fitZoom)));
-                    }}
-                    className="px-3 py-1 bg-gray-800 text-gray-100 border border-gray-600 hover:bg-gray-700 transition-colors text-sm"
-                    title="Fit to Width"
-                  >
-                    📏 Fit Width
+                    <X className="h-5 w-5" />
                   </button>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => {
-                      // Toggle pan mode - for now just show alert
-                      alert('Pan mode: Click and drag to pan the PDF');
-                    }}
-                    className="px-3 py-1 bg-gray-800 text-gray-100 border border-gray-600 hover:bg-gray-700 transition-colors text-sm"
-                    title="Pan Mode"
-                  >
-                    🖱️ Pan
-                  </button>
-                  <button
-                    onClick={() => {
-                      // Download PDF
-                      if (pdfUrl) {
-                        const link = document.createElement('a');
-                        link.href = pdfUrl;
-                        link.download = 'resume.pdf';
-                        link.click();
-                      }
-                    }}
-                    className="px-3 py-1 bg-gray-800 text-gray-100 border border-gray-600 hover:bg-gray-700 transition-colors text-sm"
-                    title="Download PDF"
-                    disabled={!pdfUrl}
-                  >
-                    💾 Download
-                  </button>
-                  <button
-                    onClick={() => {
-                      // Print PDF
-                      if (pdfUrl) {
-                        const printWindow = window.open(pdfUrl, '_blank');
-                        if (printWindow) {
-                          printWindow.print();
-                        }
-                      }
-                    }}
-                    className="px-3 py-1 bg-gray-800 text-gray-100 border border-gray-600 hover:bg-gray-700 transition-colors text-sm"
-                    title="Print PDF"
-                    disabled={!pdfUrl}
-                  >
-                    🖨️ Print
-                  </button>
-                  <button
-                    onClick={() => {
-                      // Full screen mode
-                      const container = document.querySelector('.flex-1.overflow-hidden.relative');
-                      if (container && container.requestFullscreen) {
-                        container.requestFullscreen();
-                      }
-                    }}
-                    className="px-3 py-1 bg-gray-800 text-gray-100 border border-gray-600 hover:bg-gray-700 transition-colors text-sm"
-                    title="Full Screen"
-                  >
-                    � Full Screen
-                  </button>
-                </div>
-              </div>
-
-              {/* Rendered Content */}
-              <div className="flex-1 overflow-hidden relative">
-                {pdfUrl ? (
-                  <div className="h-full w-full flex items-center justify-center bg-gray-900">
-                    <iframe
-                      src={pdfUrl}
-                      className="w-full h-full border-0"
-                      style={{
-                        transform: `scale(${zoomLevel / 100})`,
-                        transformOrigin: 'center center',
-                      }}
-                      title="PDF Preview"
-                    />
-                  </div>
-                ) : (
-                  <div className="h-full flex items-center justify-center bg-gray-900 text-gray-400">
-                    <div className="text-center">
-                      <div className="text-4xl mb-4">📄</div>
-                      <p>No PDF generated yet</p>
-                      <p className="text-sm mt-2">Click "Build now" to generate your resume</p>
-                    </div>
-                  </div>
-                )}
-
-               
-                <canvas
-                  ref={setCanvasRef}
-                  className="absolute top-0 left-0 pointer-events-none"
-                  style={{
-                    transform: `scale(${zoomLevel / 100})`,
-                    transformOrigin: 'center center',
-                  }}
-                />
+                <Sidebar onToggle={setSidebarCollapsed} />
               </div>
             </div>
           )}
-        </div>
+          <main
+            className={`transition-all duration-300 ease-in-out ${
+              // On small screens we want no left margin so content is full-width.
+              // Apply margins only at large (lg) breakpoints to account for the sidebar.
+              sidebarCollapsed ? "ml-0 lg:ml-20" : "ml-0 lg:ml-64"
+            } min-h-screen`}
+          >
+            <Header pageName="LaTeX Live Editor" />
+            <div className="p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Data Management Controls */}
+              <div className="lg:col-span-12 mb-4">
+                <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <h3 className="font-semibold text-sm tracking-wide">
+                        USER DATA MANAGEMENT
+                      </h3>
+                      {hasUnsavedChanges && (
+                        <span className="text-xs bg-yellow-600 text-white px-2 py-1 rounded">
+                          Unsaved changes
+                        </span>
+                      )}
+                      {isDataLoaded && !hasUnsavedChanges && (
+                        <span className="text-xs bg-green-600 text-white px-2 py-1 rounded">
+                          Data loaded
+                        </span>
+                      )}
+                      <label className="flex items-center space-x-2 text-xs">
+                        <input
+                          type="checkbox"
+                          checked={autoSaveEnabled}
+                          onChange={(e) => setAutoSaveEnabled(e.target.checked)}
+                          className="rounded"
+                        />
+                        <span>Auto-save</span>
+                      </label>
+                    </div>
+                    <div className="flex items-center flex-wrap gap-2">
+                      <button
+                        onClick={loadUserData}
+                        disabled={isLoadingUserData}
+                        title={isLoadingUserData ? "Loading sample data" : "Load sample data"}
+                        aria-label={isLoadingUserData ? "Loading sample data" : "Load sample data"}
+                        className="p-2 sm:px-3 sm:py-2 bg-blue-600 text-white rounded text-xs flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700"
+                      >
+                        <User className="h-4 w-4" />
+                        <span className="hidden sm:inline">{isLoadingUserData ? "Loading..." : "Load Sample Data"}</span>
+                      </button>
 
-        {/* Buttons and Log */}
-        <div className="mt-2 space-y-2">
-          <div className="flex gap-4">
-            <button
-              className="bg-indigo-600 text-white px-5 py-2 font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors border border-indigo-600"
-              disabled={!data.name || data.name.trim() === '' || loading}
-              onClick={() => {
-                try {
-                  console.log('Manual build with template:', selectedTemplate)
-                  const tex = generateResumeTex(data, selectedTemplate, {
-                    pageSize,
-                    fontFamily,
-                    primaryColor,
-                    secondaryColor
-                  })
-                  setLatexCode(tex)
-                  setLoading(true)
-                  wsRef.current?.send(JSON.stringify({ type: 'edit', tex }))
-                  setLog((s) => s + '\nManual build requested')
-                } catch (error) {
-                  setLog((s) => s + '\nERROR: ' + (error instanceof Error ? error.message : 'Failed to generate LaTeX'))
-                  setLoading(false)
-                }
-              }}
-            >
-              Build now {loading && <Spinner />}
-            </button>
+                      <button
+                        onClick={saveUserData}
+                        disabled={isSavingUserData || (!hasUnsavedChanges && autoSaveEnabled)}
+                        title={isSavingUserData ? "Saving changes" : "Save changes"}
+                        aria-label={isSavingUserData ? "Saving changes" : "Save changes"}
+                        className="p-2 sm:px-3 sm:py-2 bg-green-600 text-white rounded text-xs flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-700"
+                      >
+                        <Save className="h-4 w-4" />
+                        <span className="hidden sm:inline">{isSavingUserData ? "Saving..." : "Save Changes"}</span>
+                      </button>
 
-            <a href={pdfUrl || '#'} download="resume.pdf">
+                      <button
+                        onClick={() => {
+                          setData(UserDataService.getEmptyResumeData());
+                          setIsDataLoaded(false);
+                          setHasUnsavedChanges(false);
+                        }}
+                        title="Clear all data"
+                        aria-label="Clear all data"
+                        className="p-2 sm:px-3 sm:py-2 bg-red-600 text-white rounded text-xs flex items-center gap-2 hover:bg-red-700"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        <span className="hidden sm:inline">Clear All</span>
+                      </button>
+                    </div>
+                  </div>
+                  {dataLoadError && (
+                    <div className="mt-2 text-xs text-red-400 bg-red-900/20 border border-red-500/20 rounded px-2 py-1">
+                      {dataLoadError}
+                    </div>
+                  )}
+                  <div className="mt-2 text-xs text-gray-400">
+                    Click "Load Sample Data" to populate all fields with test data. You can then edit any field as needed. 
+                    {autoSaveEnabled ? " Changes will be auto-saved every 3 seconds." : " Manual save required."}
+                  </div>
+                </div>
+              </div>
+
+              {/* LEFT: MAIN editor panel */}
+              <div className="space-y-6 lg:col-span-5">
+                <TemplateSelector
+                  selectedTemplate={selectedTemplate}
+                  setSelectedTemplate={setSelectedTemplate}
+                  pageSize={pageSize}
+                  setPageSize={setPageSize}
+                  fontFamily={fontFamily}
+                  setFontFamily={setFontFamily}
+                  primaryColor={primaryColor}
+                  setPrimaryColor={setPrimaryColor}
+                  secondaryColor={secondaryColor}
+                  setSecondaryColor={setSecondaryColor}
+                  sectionSpacingMm={sectionSpacingMm}
+                  setSectionSpacingMm={setSectionSpacingMm}
+                />
+
+                <BasicInfoForm data={data} updateField={updateField} />
+
+                <ExperienceForm
+                  data={data}
+                  addExperience={addExperience}
+                  updateExperience={updateExperience}
+                  removeExperience={removeExperience}
+                />
+
+                <EducationForm
+                  data={data}
+                  addEducation={addEducation}
+                  updateEducation={updateEducation}
+                  removeEducation={removeEducation}
+                />
+
+                <SkillsForm data={data} updateField={updateField} />
+
+                <LinksForm data={data} updateField={updateField} />
+                <CustomSectionsForm data={data} updateField={updateField} />
+              </div>
+
+              {/* RIGHT: Live preview / Editor split */}
+              <div className="space-y-6 lg:col-span-7 hidden lg:block">
+                <section className="bg-white/5 border border-white/10 rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="font-bold text-sm tracking-wide">
+                      LIVE PREVIEW
+                    </h2>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => setActiveTab("preview")}
+                        className={`px-3 py-1 text-xs rounded ${
+                          activeTab === "preview"
+                            ? "bg-white text-black"
+                            : "bg-white/10 text-gray-300"
+                        }`}
+                      >
+                        Preview
+                      </button>
+                      <button
+                        onClick={() => setActiveTab("editor")}
+                        className={`px-3 py-1 text-xs rounded ${
+                          activeTab === "editor"
+                            ? "bg-white text-black"
+                            : "bg-white/10 text-gray-300"
+                        }`}
+                      >
+                        LaTeX Code
+                      </button>
+                      <button
+                        onClick={() => setActiveTab("rendered")}
+                        className={`px-3 py-1 text-xs rounded ${
+                          activeTab === "rendered"
+                            ? "bg-white text-black"
+                            : "bg-white/10 text-gray-300"
+                        }`}
+                      >
+                        PDF
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-2 space-y-2 mb-4">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setLogOpen(!logOpen)}
+                        className="text-xs px-2 py-1 bg-gray-700 rounded"
+                      >
+                        {logOpen ? "Hide" : "Show"} Build Log
+                      </button>
+                      <button
+                        onClick={() => {
+                          try {
+                            const tex = generateResumeTex(data, selectedTemplate, {
+                              pageSize,
+                              fontFamily,
+                              primaryColor,
+                              secondaryColor,
+                            });
+                            setLatexCode(tex);
+                            if (wsRef.current?.readyState === WebSocket.OPEN) {
+                              wsRef.current.send(JSON.stringify({ type: "edit", tex }));
+                              setLog((s) => s + "\\nSynced LaTeX code with current template");
+                            }
+                          } catch (error) {
+                            setLog((s) => s + "\\nError syncing LaTeX: " + (error instanceof Error ? error.message : "Unknown error"));
+                          }
+                        }}
+                        className="text-xs px-2 py-1 bg-blue-600 text-white rounded"
+                      >
+                        Sync LaTeX
+                      </button>
+                      {loading && (
+                        <div className="text-xs text-yellow-400">Building...</div>
+                      )}
+                      {pdfUrl && (
+                        <a
+                          href={pdfUrl}
+                          download="resume.pdf"
+                          className="text-xs px-2 py-1 bg-green-600 text-white rounded flex items-center gap-1"
+                        >
+                          <Download className="h-3 w-3" />
+                          Download PDF
+                        </a>
+                      )}
+                    </div>
+
+                    {logOpen && (
+                      <div className="bg-black/60 border border-gray-600 rounded p-3 text-xs font-mono max-h-24 overflow-y-auto">
+                        <pre className="whitespace-pre-wrap text-gray-300">
+                          {log || "No logs yet..."}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                  <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700 flex flex-col min-h-[600px] pt-3">
+                    {activeTab === "preview" ? (
+                      <div className="flex-1 p-4 overflow-auto bg-gray-100 min-h-0">
+                        <div className="max-w-4xl mx-auto bg-white shadow-lg">
+                          {renderTemplate()}
+                        </div>
+                      </div>
+                    ) : activeTab === "editor" ? (
+                      <div className="flex-1 min-h-0">
+                        <Editor
+                          height="600px"
+                          defaultLanguage="latex"
+                          value={latexCode}
+                          onChange={handleLatexCodeChange}
+                          theme="vs-dark"
+                          options={{
+                            minimap: { enabled: false },
+                            fontSize: 12,
+                            wordWrap: "on",
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex-1 p-4 min-h-0 flex flex-col">
+                        {pdfUrl ? (
+                          <iframe
+                            src={pdfUrl}
+                            className="w-full flex-1 h-full rounded border-0"
+                            title="Generated PDF"
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center h-full text-gray-400">
+                            <div className="text-center">
+                              <Code className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                              <p>No PDF generated yet</p>
+                              <p className="text-sm">
+                                Fill in your information to generate a PDF
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </section>
+              </div>
+            </div>
+            {/* Mobile floating preview button */}
+            <div className="fixed bottom-4 right-4 lg:hidden">
               <button
-                className="bg-green-600 text-white px-5 py-2 font-semibold hover:bg-green-700 cursor-pointer transition-colors border border-green-600"
-                disabled={!pdfUrl}
+                className="p-3 rounded-full bg-indigo-600 text-white shadow-lg"
+                onClick={() => setMobilePreviewOpen(true)}
+                title="Open preview"
               >
-                Download PDF
+                <Eye className="h-5 w-5" />
               </button>
-            </a>
-          </div>
+            </div>
 
-          <div>
-            <button
-              className="bg-gray-800 text-gray-100 border border-gray-600 px-4 py-2 font-medium hover:bg-gray-700 transition-colors"
-              onClick={() => setLogOpen(!logOpen)}
-            >
-              {logOpen ? 'Hide compile log' : 'Show compile log'}
-            </button>
-            {logOpen && (
-              <button
-                className="bg-red-800 text-white border border-red-600 px-4 py-2 font-medium hover:bg-red-700 transition-colors ml-2"
-                onClick={() => setLog('')}
+            {/* Mobile preview modal */}
+            {mobilePreviewOpen && (
+              <div
+                className="fixed inset-0 z-50 bg-black/60 flex items-start lg:hidden"
+                onClick={() => setMobilePreviewOpen(false)}
               >
-                Clear Log
-              </button>
-            )}
-            {logOpen && (
-              <div className="max-h-44 overflow-auto bg-gray-900 p-3 border border-gray-700 rounded mt-2">
-                <h4 className="m-0 font-semibold text-sm">Compile log</h4>
-                <pre className="text-xs whitespace-pre-wrap">{log}</pre>
+                <div
+                  className="bg-white w-full h-full overflow-auto relative"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={() => setMobilePreviewOpen(false)}
+                    className="absolute top-4 right-4 p-3 bg-black/10 rounded-full"
+                    aria-label="Close preview"
+                  >
+                    <X className="h-6 w-6 text-black" />
+                  </button>
+                  <div className="p-4 pt-16">
+                    <div className="w-full max-w-4xl px-4 mx-auto">
+                      {renderTemplate()}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
 
-  function Spinner() {
-    return (
-      <span className="inline-block w-[22px] h-[22px] border-4 border-indigo-600 border-t-transparent rounded-full animate-spin ml-2"></span>
-    )
-  }
+            <FooterSection />
+          </main>
+        </div>
+      </SignedIn>
+      <SignedOut>
+        <div className="bg-black text-white min-h-screen flex items-center justify-center">
+          <RedirectToSignIn />
+        </div>
+      </SignedOut>
+    </>
+  );
 }
