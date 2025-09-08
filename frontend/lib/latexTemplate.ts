@@ -1,40 +1,40 @@
 export type ResumeData = {
   name: string;
-  title?: string;
-  email?: string;
-  phone?: string;
-  location?: string;
-  website?: string;
-  summary?: string;
-  experiences?: Array<{
-    company?: string;
-    role?: string;
-    start?: string;
-    end?: string;
-    bullets?: string[];
+  title: string;
+  email: string;
+  phone: string;
+  location: string;
+  website: string;
+  summary: string;
+  experiences: Array<{
+    company: string;
+    role: string;
+    bullets: string[];
   }>;
-  education?: Array<{
-    school?: string;
-    degree?: string;
-    start?: string;
-    end?: string;
+  education: Array<{
+    school: string;
+    degree: string;
   }>;
-  projects?: Array<{
-    name?: string;
-    technologies?: string;
-    link?: string;
-    description?: string;
+  skills: string[];
+  links: Array<{
+    name: string;
+    url: string;
   }>;
-  skills?: string[];
   customSections?: Array<{
-    title?: string;
-    content?: string;
-  }>;
-  links?: Array<{
-    label?: string;
-    url?: string;
+    id: string;
+    title: string;
+    content: string;
   }>;
 };
+
+// Import modular template components
+import { TemplateParams } from './latexTemplates/types';
+import * as classicTemplate from './latexTemplates/classic';
+import * as modernTemplate from './latexTemplates/modern';
+import * as creativeTemplate from './latexTemplates/creative';
+import * as professionalTemplate from './latexTemplates/professional';
+import * as minimalistTemplate from './latexTemplates/minimalist';
+import * as twoColumnTemplate from './latexTemplates/twoColumn';
 
 export function escapeLatex(s: string | undefined): string {
   if (!s) return '';
@@ -79,23 +79,69 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
   return { r, g, b };
 }
 
-/** Generate a simple resume LaTeX document from form data. */
 export function generateResumeTex(
   data: ResumeData,
-  template: 'classic' | 'modern' | 'creative' | 'professional' = 'classic',
+  template: 'classic' | 'modern' | 'creative' | 'professional' | 'minimalist' | 'twoColumn' = 'classic',
   options?: {
     pageSize?: 'a4' | 'letter';
     fontFamily?: 'serif' | 'sans-serif' | 'mono';
     primaryColor?: string;
     secondaryColor?: string;
-    sectionOrder?: string[];
+  sectionSpacingMm?: number;
   }
 ): string {
   
   if (!data.name || data.name.trim() === '') {
-    throw new Error('Name is required to generate resume');
+   
+    console.warn('generateResumeTex: name is empty — falling back to empty string');
   }
 
+
+  const processedData = processResumeData(data, options);
+
+
+  const templateParams: TemplateParams = {
+    ...processedData,
+    pageSize: options?.pageSize || 'letter',
+    fontFamily: getFontFamilyString(options?.fontFamily || 'serif'),
+    primaryColorRGB: hexToRgb(options?.primaryColor || '#000000'),
+    secondaryColorRGB: hexToRgb(options?.secondaryColor || '#666666'),
+  };
+
+  console.log('Generating LaTeX with options:', {
+    template,
+    pageSize: templateParams.pageSize,
+    fontFamily: templateParams.fontFamily,
+    primaryColor: options?.primaryColor,
+    secondaryColor: options?.secondaryColor,
+    sectionSpacingMm: templateParams.sectionSpacingSmall,
+    hasName: !!templateParams.name,
+    hasExperiences: !!templateParams.experiences,
+    hasEducation: !!templateParams.education,
+    hasSkills: !!templateParams.skillsList
+  });
+
+  // Generate LaTeX using modular templates
+  return generateLatexFromTemplate(template, templateParams);
+}
+
+// Helper function to get font family string for LaTeX
+function getFontFamilyString(fontFamily: 'serif' | 'sans-serif' | 'mono'): string {
+  switch (fontFamily) {
+    case 'sans-serif': return '\\renewcommand{\\familydefault}{\\sfdefault}';
+    case 'mono': return '\\renewcommand{\\familydefault}{\\ttdefault}';
+    default: return '';
+  }
+}
+
+// Helper function to process resume data and create all the formatted strings
+function processResumeData(data: ResumeData, options?: {
+  pageSize?: 'a4' | 'letter';
+  fontFamily?: 'serif' | 'sans-serif' | 'mono';
+  primaryColor?: string;
+  secondaryColor?: string;
+  sectionSpacingMm?: number;
+}) {
   const name = escapeLatex(data.name?.trim() || '');
   const title = escapeLatex(data.title?.trim() || '');
   const email = escapeLatex(data.email?.trim() || '');
@@ -103,16 +149,23 @@ export function generateResumeTex(
   const location = escapeLatex(data.location?.trim() || '');
   const website = escapeLatex(data.website?.trim() || '');
   const summary = escapeLatex(data.summary?.trim() || '');
+  const rawSpacing = typeof options?.sectionSpacingMm === 'number' ? options!.sectionSpacingMm : 3;
+  const sectionSpacingMm = Math.max(0, Math.min(20, Math.round(rawSpacing * 10) / 10));
+  // small and medium spacing derived from the base spacing for consistent scaling
+  const sectionSpacingSmall = Math.max(0, sectionSpacingMm);
+  const sectionSpacingMedium = Math.max(1, Math.round(sectionSpacingMm * 1.5));
 
-  const skillsList = (data.skills || [])
+  const skillsItems = (data.skills || [])
     .filter(skill => skill && skill.trim())
-    .map((s) => escapeLatex(s.trim()))
-    .join(', ');
+    .map((s) => `\\item ${escapeLatex(s.trim())}`)
+    .join('\n');
+
+  const skillsList = skillsItems ? `\\begin{itemize}[leftmargin=*,itemsep=${sectionSpacingSmall}mm,parsep=0pt]\n${skillsItems}\n\\end{itemize}` : '';
 
   const linksList = (data.links || [])
-    .filter(link => link && (link.label?.trim() || link.url?.trim()))
+    .filter(link => link && (link.name?.trim() || link.url?.trim()))
     .map((link) => {
-      const label = escapeLatex(link.label?.trim() || '');
+      const label = escapeLatex(link.name?.trim() || '');
       const url = escapeLatex(link.url?.trim() || '');
       if (label && url) {
         return `\\href{${url}}{${label}}`;
@@ -126,232 +179,105 @@ export function generateResumeTex(
     .filter(link => link)
     .join(' \\textbullet{} ');
 
+  // Create a links section (LaTeX lines) to append after skills
+  const linksSection = (data.links || [])
+    .filter(link => link && (link.name?.trim() || link.url?.trim()))
+    .map((link) => {
+      const label = escapeLatex(link.name?.trim() || '');
+      const url = escapeLatex(link.url?.trim() || '');
+      if (label && url) return `\\href{${url}}{${label}}`;
+      if (url) return `\\href{${url}}{${url}}`;
+      return label;
+    })
+    .filter(Boolean)
+    .join(' \\\\ ');
+
+  // Custom sections (user added sections)
+  const customSectionsTex = (data.customSections || [])
+    .filter(s => s && (s.title?.trim() || s.content?.trim()))
+    .map((s) => {
+      const title = escapeLatex(s.title?.trim() || '');
+      // Allow basic newlines -> paragraph breaks in LaTeX
+      const contentRaw = (s.content || '').trim();
+      const contentEscaped = escapeLatex(contentRaw).replace(/\n/g, '\\\\par ');
+      return `\\section*{${title}}\n${contentEscaped}`;
+    })
+    .join(`\n\\vspace{${sectionSpacingSmall}mm}\n`);
+
+  // Short version of education for sidebar (e.g., just schools)
+  const educationShort = (data.education || [])
+    .filter(edu => edu && (edu.school?.trim()))
+    .map((edu) => escapeLatex(edu.school?.trim() || ''))
+    .join(', ');
+
   const experiences = (data.experiences || [])
     .filter(exp => exp && (exp.role?.trim() || exp.company?.trim()))
     .map((exp) => {
       const role = escapeLatex(exp.role?.trim() || '');
       const company = escapeLatex(exp.company?.trim() || '');
-      const start = escapeLatex(exp.start?.trim() || '');
-      const end = escapeLatex(exp.end?.trim() || '');
       const bullets = (exp.bullets || [])
         .filter(b => b && b.trim())
         .map((b) => `\\item ${escapeLatex(b.trim())}`)
         .join('\n');
 
       if (!bullets) {
-        return `\\textbf{${role}} \\\\ \\small ${company} \\hfill ${start} -- ${end}`;
+        return `\\textbf{${role}} \\\\ \\small ${company}`;
       }
-
-      return `\\textbf{${role}} \\\\ \\small ${company} \\hfill ${start} -- ${end} \\\\ \\begin{itemize}[leftmargin=*]\n${bullets}\n\\end{itemize}`;
+      return `\\textbf{${role}} \\\\ \\small ${company} \\\\ \\begin{itemize}[leftmargin=*,topsep=0pt,partopsep=0pt,itemsep=${sectionSpacingSmall}mm,parsep=0pt]\n${bullets}\n\\end{itemize}`;
     })
-    .join('\n\\vspace{2mm}\n');
+    .join(`\n\\vspace{${sectionSpacingSmall}mm}\n`);
 
   const education = (data.education || [])
     .filter(edu => edu && (edu.school?.trim() || edu.degree?.trim()))
     .map((edu) => {
       const school = escapeLatex(edu.school?.trim() || '');
       const degree = escapeLatex(edu.degree?.trim() || '');
-      const start = escapeLatex(edu.start?.trim() || '');
-      const end = escapeLatex(edu.end?.trim() || '');
-      return `\\textbf{${school}} \\\\ ${degree} \\hfill ${start} -- ${end}`;
+      return `\\textbf{${school}} \\\\ ${degree}`;
     })
-    .join('\n\\vspace{2mm}\n');
+    .join(`\n\\vspace{${sectionSpacingSmall}mm}\n`);
 
-  const projects = (data.projects || [])
-    .filter(proj => proj && (proj.name?.trim() || proj.description?.trim()))
-    .map((proj) => {
-      const name = escapeLatex(proj.name?.trim() || '');
-      const technologies = escapeLatex(proj.technologies?.trim() || '');
-      const link = escapeLatex(proj.link?.trim() || '');
-      const description = escapeLatex(proj.description?.trim() || '');
-      
-      let projectHeader = name;
-      if (link) {
-        projectHeader = `\\href{${link}}{${name}}`;
-      }
-      
-      let projectLine = `\\textbf{${projectHeader}}`;
-      if (technologies) {
-        projectLine += ` \\\\ \\small\\textit{${technologies}}`;
-      }
-      if (description) {
-        projectLine += ` \\\\ ${description}`;
-      }
-      
-      return projectLine;
-    })
-    .join('\n\\vspace{2mm}\n');
-
-  const customSections = (data.customSections || [])
-    .filter(section => section && (section.title?.trim() || section.content?.trim()))
-    .map((section) => {
-      const title = escapeLatex(section.title?.trim() || 'Custom Section');
-      const content = escapeLatex(section.content?.trim() || '');
-      return { title, content };
-    });
-
-  
   // Create colored contact line that handles hyperlinks properly
   const coloredContactParts = [email, phone, location, website].filter(part => part).map(part => `\\color{secondarycolor}${part}`);
   const coloredContactLine = coloredContactParts.join(' \\textbullet{} ');
   const coloredFullContactLine = coloredContactLine + (coloredContactLine && linksList ? ' \\textbullet{} ' + linksList : linksList);
 
-  // Customization options with defaults
-  const pageSize = options?.pageSize || 'letter';
-  const fontFamily = options?.fontFamily || 'serif';
-  const primaryColor = options?.primaryColor || '#000000';
-  const secondaryColor = options?.secondaryColor || '#666666';
-
-  const primaryColorRGB = hexToRgb(primaryColor);
-  const secondaryColorRGB = hexToRgb(secondaryColor);
-
-  console.log('Generating LaTeX with options:', {
-    template,
-    pageSize,
-    fontFamily,
-    primaryColor,
-    secondaryColor,
-    hasName: !!name,
-    hasExperiences: !!experiences,
-    hasEducation: !!education,
-    hasSkills: !!skillsList
-  });
-
-  // Generate sections in the specified order
-  const sectionOrder = options?.sectionOrder || ['skills', 'experience', 'projects', 'education'];
-  const generateOrderedSections = (isColored: boolean = false) => {
-    const sectionMap: { [key: string]: string } = {
-      'skills': skillsList ? `\\section*{${isColored ? '\\color{primarycolor}' : ''}Skills}\n${skillsList}` : '',
-      'experience': experiences ? `\\section*{${isColored ? '\\color{primarycolor}' : ''}Experience}\n${experiences}` : '',
-      'projects': projects ? `\\section*{${isColored ? '\\color{primarycolor}' : ''}Projects}\n${projects}` : '',
-      'education': education ? `\\section*{${isColored ? '\\color{primarycolor}' : ''}Education}\n${education}` : '',
-    };
-    
-    // Add custom sections to the map
-    customSections.forEach((section) => {
-      if (section.title && section.content) {
-        const sectionKey = `custom-${section.title.toLowerCase().replace(/\s+/g, '-')}`;
-        sectionMap[sectionKey] = `\\section*{${isColored ? '\\color{primarycolor}' : ''}${section.title}}\n${section.content}`;
-      }
-    });
-    
-    return sectionOrder
-      .map(sectionType => sectionMap[sectionType])
-      .filter(section => section)
-      .join('\n\n');
+  return {
+    name,
+    title,
+    email,
+    phone,
+    location,
+    website,
+    summary,
+    experiences,
+    education,
+    skillsList,
+    linksSection,
+    customSectionsTex,
+    educationShort,
+    coloredFullContactLine,
+    sectionSpacingSmall,
+    sectionSpacingMedium,
   };
+}
 
-  let latexTemplate: string;
-
+// Main function to generate LaTeX from template
+function generateLatexFromTemplate(
+  template: 'classic' | 'modern' | 'creative' | 'professional' | 'minimalist' | 'twoColumn',
+  params: TemplateParams
+): string {
   switch (template) {
     case 'modern':
-      latexTemplate = `\\documentclass[${pageSize === 'a4' ? 'a4paper' : 'letterpaper'},11pt]{article}
-\\usepackage[margin=0.8in]{geometry}
-\\usepackage{enumitem}
-\\usepackage[hidelinks]{hyperref}
-\\usepackage{parskip}
-\\usepackage{color}
-\\definecolor{primarycolor}{RGB}{${primaryColorRGB.r},${primaryColorRGB.g},${primaryColorRGB.b}}
-\\definecolor{secondarycolor}{RGB}{${secondaryColorRGB.r},${secondaryColorRGB.g},${secondaryColorRGB.b}}
-${fontFamily === 'sans-serif' ? '\\renewcommand{\\familydefault}{\\sfdefault}' : ''}
-${fontFamily === 'mono' ? '\\renewcommand{\\familydefault}{\\ttdefault}' : ''}
-\\setlength{\\parindent}{0pt}
-
-\\begin{document}
-
-\\begin{center}
-{\\LARGE \\textbf{\\color{primarycolor}${name}}}\\\\
-${title ? `{\\color{secondarycolor}${title}} \\\\` : ''}
-${coloredFullContactLine ? `${coloredFullContactLine} \\\\` : ''}
-\\end{center}
-
-${summary ? `\\vspace{3mm}\\noindent ${summary} \\vspace{4mm}` : ''}
-
-${generateOrderedSections()}
-
-\\end{document}`;
-      break;
+      return modernTemplate.preamble(params) + modernTemplate.body(params) + modernTemplate.footer();
     case 'creative':
-      latexTemplate = `\\documentclass[${pageSize === 'a4' ? 'a4paper' : 'letterpaper'},11pt]{article}
-\\usepackage[margin=0.8in]{geometry}
-\\usepackage{enumitem}
-\\usepackage[hidelinks]{hyperref}
-\\usepackage{parskip}
-\\usepackage{color}
-\\definecolor{primarycolor}{RGB}{${primaryColorRGB.r},${primaryColorRGB.g},${primaryColorRGB.b}}
-\\definecolor{secondarycolor}{RGB}{${secondaryColorRGB.r},${secondaryColorRGB.g},${secondaryColorRGB.b}}
-${fontFamily === 'sans-serif' ? '\\renewcommand{\\familydefault}{\\sfdefault}' : ''}
-${fontFamily === 'mono' ? '\\renewcommand{\\familydefault}{\\ttdefault}' : ''}
-\\setlength{\\parindent}{0pt}
-
-\\begin{document}
-
-\\begin{center}
-  {\\LARGE \\textbf{\\color{primarycolor}${name}}}\\\\
-  ${title ? `{\\color{secondarycolor}${title}} \\\\` : ''}
-  ${coloredFullContactLine ? `${coloredFullContactLine} \\\\` : ''}
-\\end{center}
-
-${summary ? `\\vspace{3mm}\\noindent ${summary} \\vspace{4mm}` : ''}
-
-${generateOrderedSections()}
-
-\\end{document}`;
-      break;
+      return creativeTemplate.preamble(params) + creativeTemplate.body(params) + creativeTemplate.footer(params);
     case 'professional':
-      latexTemplate = `\\documentclass[${pageSize === 'a4' ? 'a4paper' : 'letterpaper'},11pt]{article}
-\\usepackage[margin=0.8in]{geometry}
-\\usepackage{enumitem}
-\\usepackage[hidelinks]{hyperref}
-\\usepackage{parskip}
-\\usepackage{color}
-\\definecolor{primarycolor}{RGB}{${primaryColorRGB.r},${primaryColorRGB.g},${primaryColorRGB.b}}
-\\definecolor{secondarycolor}{RGB}{${secondaryColorRGB.r},${secondaryColorRGB.g},${secondaryColorRGB.b}}
-${fontFamily === 'sans-serif' ? '\\renewcommand{\\familydefault}{\\sfdefault}' : ''}
-${fontFamily === 'mono' ? '\\renewcommand{\\familydefault}{\\ttdefault}' : ''}
-\\setlength{\\parindent}{0pt}
-
-\\begin{document}
-
-\\begin{center}
-{\\LARGE \\textbf{\\color{primarycolor}${name}}}\\\\
-${title ? `{\\color{secondarycolor}${title}} \\\\` : ''}
-${coloredFullContactLine ? `${coloredFullContactLine} \\\\` : ''}
-\\end{center}
-
-${summary ? `\\vspace{3mm}\\noindent ${summary} \\vspace{4mm}` : ''}
-
-${generateOrderedSections(true)}
-
-\\end{document}`;
-      break;
+      return professionalTemplate.preamble(params) + professionalTemplate.body(params) + professionalTemplate.footer(params);
+    case 'minimalist':
+      return minimalistTemplate.preamble(params) + minimalistTemplate.body(params) + minimalistTemplate.footer(params);
+    case 'twoColumn':
+      return twoColumnTemplate.preamble(params) + twoColumnTemplate.body(params) + twoColumnTemplate.footer(params);
     default: // classic
-      latexTemplate = `\\documentclass[${pageSize === 'a4' ? 'a4paper' : 'letterpaper'},11pt]{article}
-\\usepackage[margin=0.8in]{geometry}
-\\usepackage{enumitem}
-\\usepackage[hidelinks]{hyperref}
-\\usepackage{parskip}
-\\usepackage{color}
-\\definecolor{primarycolor}{RGB}{${primaryColorRGB.r},${primaryColorRGB.g},${primaryColorRGB.b}}
-\\definecolor{secondarycolor}{RGB}{${secondaryColorRGB.r},${secondaryColorRGB.g},${secondaryColorRGB.b}}
-${fontFamily === 'sans-serif' ? '\\renewcommand{\\familydefault}{\\sfdefault}' : ''}
-${fontFamily === 'mono' ? '\\renewcommand{\\familydefault}{\\ttdefault}' : ''}
-\\setlength{\\parindent}{0pt}
-
-\\begin{document}
-
-\\begin{center}
-  {\\LARGE \\textbf{\\color{primarycolor}${name}}}\\\\
-  ${title ? `\\color{secondarycolor}${title} \\\\` : ''}
-  ${coloredFullContactLine ? `${coloredFullContactLine} \\\\` : ''}
-\\end{center}
-
-${summary ? `\\vspace{3mm}\\noindent \\color{primarycolor}${summary} \\vspace{4mm}` : ''}
-
-${generateOrderedSections(true)}
-
-\\end{document}`;
+      return classicTemplate.preamble(params) + classicTemplate.body(params) + classicTemplate.footer();
   }
-
-  return latexTemplate;
 }

@@ -33,3 +33,32 @@ export interface Resume {
     description: string;
   }[];
 }
+
+export interface ResumeData {
+  name: string;
+  title: string;
+  email: string;
+  phone: string;
+  location: string;
+  website: string;
+  summary: string;
+  experiences: {
+    company: string;
+    role: string;
+    bullets: string[];
+  }[];
+  education: {
+    school: string;
+    degree: string;
+  }[];
+  skills: string[];
+  links: {
+    name: string;
+    url: string;
+  }[];
+  customSections?: {
+    id: string;
+    title: string;
+    content: string;
+  }[];
+}
