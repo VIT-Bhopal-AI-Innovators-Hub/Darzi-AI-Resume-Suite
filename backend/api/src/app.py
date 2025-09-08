@@ -1,22 +1,23 @@
-import asyncio
-import json
 import os
+import json
+import asyncio
 import tempfile
-from datetime import datetime
 from pathlib import Path
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.responses import RedirectResponse
 
 try:
-    import docx  # optional
+    import docx
 except Exception:
-    docx = None  # type: ignore
+    docx = None
 
-from utils.data_extractor.core import extract_text as vision_extract_text
 from utils.llm.manager import LLMManager
+from utils.data_extractor.core import extract_text as vision_extract_text
 
 
 app = FastAPI(title="DARZI AI Resume Suite API", docs_url=None, redoc_url=None, openapi_url="/openapi.json")
@@ -28,6 +29,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+class GenerateResumePayload(BaseModel):
+    data: Dict[str, Any]
+    preferred_provider: Optional[str] = None
+
+class AutoFixPayload(BaseModel):
+    field: str
+    context: Dict[str, Any]
+    constraints: Optional[Dict[str, Any]] = None
+    preferred_provider: Optional[str] = None
+
+
+@app.get("/")
+async def root():
+    return RedirectResponse("https://github.com/VIT-Bhopal-AI-Innovators-Hub/Darzi-AI-Resume-Suite")
 
 @app.get("/health")
 async def health_check():
@@ -53,7 +68,6 @@ async def health_check():
             "error": str(e),
             "timestamp": datetime.utcnow().isoformat()
         }
-
 
 def _decode_text_bytes(b: bytes) -> str:
     try:
@@ -114,7 +128,6 @@ async def _extract_text_for_file(upload: UploadFile) -> str:
 
     # Fallback: best-effort local decoding
     return _decode_text_bytes(content)
-
 
 async def _parse_text(text: str, llm: Optional[LLMManager]) -> Dict[str, Any]:
     """Use LLM to structure the raw text into proper JSON format"""
@@ -258,18 +271,6 @@ def _get_llm(preferred: Optional[str] = None) -> Optional[LLMManager]:
         return None
 
 
-class GenerateResumePayload(BaseModel):
-    data: Dict[str, Any]
-    preferred_provider: Optional[str] = None
-
-
-class AutoFixPayload(BaseModel):
-    field: str
-    context: Dict[str, Any]
-    constraints: Optional[Dict[str, Any]] = None
-    preferred_provider: Optional[str] = None
-
-
 @app.post("/parse-data")
 async def parse_data(files: List[UploadFile] = File(...)) -> Dict[str, Any]:
     if not files:
@@ -354,5 +355,3 @@ async def auto_fix(payload: AutoFixPayload) -> Dict[str, Any]:
         return {"field": field, "suggestion": cleaned}
 
     return {"field": field, "suggestion": ""}
-
-
