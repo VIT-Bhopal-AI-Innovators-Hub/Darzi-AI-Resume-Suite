@@ -98,9 +98,9 @@ export default function ModernResume({ data, primaryColor, secondaryColor, secti
                 Links
               </h3>
               <div className="space-y-1 text-sm">
-                {data.links.filter(link => link.name.trim() || link.url.trim()).map((link, index) => (
+                {data.links.filter(link => link.label.trim() || link.url.trim()).map((link, index) => (
                   <div key={index}>
-                    <div className="font-medium">{link.name}</div>
+                    <div className="font-medium">{link.label}</div>
                     <div style={{ color: secondaryColor }} className="break-all">{link.url}</div>
                   </div>
                 ))}

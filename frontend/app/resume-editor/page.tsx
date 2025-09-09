@@ -5,7 +5,7 @@ import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
 import Sidebar from "../../components/main/sidebar";
 import Header from "../../components/main/header";
 import FooterSection from "@/components/footer";
-import { generateResumeTex } from "@/lib/latexTemplate";
+import { generateResumeTex, ResumeData } from "@/lib/latexTemplate";
 
 // Import components
 import ViewTabs from "./components/ViewTabs";
@@ -21,6 +21,7 @@ import {
   ResumeSection, 
   CustomSection 
 } from "./components/types";
+import { Resume } from "@/types/resume";
 
 export default function ResumeEditor() {
   // Sidebar state
@@ -163,7 +164,7 @@ export default function ResumeEditor() {
       return "";
     }
 
-    const resumeData = {
+    const resumeData: ResumeData = {
       name: formData.fullName,
       title: formData.title,
       email: formData.email,
@@ -195,6 +196,7 @@ export default function ResumeEditor() {
         description: proj.description,
       })),
       customSections: customSections.map((section) => ({
+        id: section.id,
         title: section.title,
         content: section.content,
       })),

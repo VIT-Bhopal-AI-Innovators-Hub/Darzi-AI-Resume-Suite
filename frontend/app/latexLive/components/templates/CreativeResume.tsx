@@ -118,9 +118,9 @@ export default function CreativeResume({ data, primaryColor, secondaryColor, sec
                   <div className="absolute bottom-0 left-0 w-12 h-1 rounded" style={{ backgroundColor: primaryColor }}></div>
                 </h3>
                 <div className="space-y-2">
-                  {data.links.filter(link => link.name.trim() || link.url.trim()).map((link, index) => (
+                  {data.links.filter(link => link.label.trim() || link.url.trim()).map((link, index) => (
                     <div key={index} style={{ marginBottom: smallMb, padding: '0.75rem', borderRadius: '6px', backgroundColor: `${secondaryColor}10` }}>
-                      <div className="font-bold">{link.name}</div>
+                      <div className="font-bold">{link.label}</div>
                       <div style={{ color: secondaryColor }} className="text-sm break-all">{link.url}</div>
                     </div>
                   ))}

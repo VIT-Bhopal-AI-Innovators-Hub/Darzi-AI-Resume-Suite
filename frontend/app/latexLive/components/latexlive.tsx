@@ -2,10 +2,19 @@
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { Eye, X, Download, Code, RefreshCw, Save, User, Menu } from "lucide-react";
+import {
+  Eye,
+  X,
+  Download,
+  Code,
+  RefreshCw,
+  Save,
+  User,
+  Menu,
+} from "lucide-react";
 import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
 import { ResumeData, generateResumeTex } from "@/lib/latexTemplate";
-import ReconnectingWebSocket from '@/lib/reconnectingWebsocket';
+import ReconnectingWebSocket from "@/lib/reconnectingWebsocket";
 import { UserDataService } from "@/lib/userDataService";
 import { useAutoSave } from "@/lib/hooks/useAutoSave";
 import Sidebar from "@/components/main/sidebar";
@@ -57,8 +66,8 @@ export default function ResumeGenerator() {
     experiences: [],
     education: [],
     skills: [],
-  links: [],
-  customSections: [],
+    links: [],
+    customSections: [],
   });
   const [selectedTemplate, setSelectedTemplate] = useState<
     "classic" | "modern" | "creative" | "professional" | "minimalist"
@@ -107,7 +116,7 @@ export default function ResumeGenerator() {
       setIsDataLoaded(true);
       setHasUnsavedChanges(false);
       setLog((s) => s + "\nUser data loaded successfully");
-      
+
       // Generate initial LaTeX code for the loaded data
       try {
         const tex = generateResumeTex(userData, selectedTemplate, {
@@ -121,16 +130,29 @@ export default function ResumeGenerator() {
         setLog((s) => s + "\nGenerated LaTeX code for loaded data");
       } catch (error) {
         console.error("Error generating initial LaTeX:", error);
-        setLog((s) => s + "\nError generating initial LaTeX: " + (error instanceof Error ? error.message : "Unknown error"));
+        setLog(
+          (s) =>
+            s +
+            "\nError generating initial LaTeX: " +
+            (error instanceof Error ? error.message : "Unknown error")
+        );
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to load user data";
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to load user data";
       setDataLoadError(errorMessage);
       setLog((s) => s + "\nError loading user data: " + errorMessage);
     } finally {
       setIsLoadingUserData(false);
     }
-  }, [selectedTemplate, pageSize, fontFamily, primaryColor, secondaryColor, sectionSpacingMm]);
+  }, [
+    selectedTemplate,
+    pageSize,
+    fontFamily,
+    primaryColor,
+    secondaryColor,
+    sectionSpacingMm,
+  ]);
 
   // Save user data to the service
   const saveUserData = useCallback(async () => {
@@ -140,7 +162,8 @@ export default function ResumeGenerator() {
       setHasUnsavedChanges(false);
       setLog((s) => s + "\nUser data saved successfully");
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to save user data";
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to save user data";
       setLog((s) => s + "\nError saving user data: " + errorMessage);
     } finally {
       setIsSavingUserData(false);
@@ -164,7 +187,7 @@ export default function ResumeGenerator() {
   const handleLatexCodeChange = useCallback((value: string | undefined) => {
     const newCode = value || "";
     setLatexCode(newCode);
-    
+
     // Debounce sending the code to WebSocket to avoid too many requests
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(() => {
@@ -230,10 +253,7 @@ export default function ResumeGenerator() {
   }, [connectWebSocket]);
 
   const scheduleBuild = useCallback(
-    (
-      latest: ResumeData,
-      tmpl: typeof selectedTemplate = selectedTemplate
-    ) => {
+    (latest: ResumeData, tmpl: typeof selectedTemplate = selectedTemplate) => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
       debounceRef.current = window.setTimeout(() => {
         try {
@@ -261,7 +281,14 @@ export default function ResumeGenerator() {
         }
       }, 700) as unknown as number;
     },
-  [pageSize, fontFamily, primaryColor, secondaryColor, selectedTemplate, sectionSpacingMm]
+    [
+      pageSize,
+      fontFamily,
+      primaryColor,
+      secondaryColor,
+      selectedTemplate,
+      sectionSpacingMm,
+    ]
   );
 
   function updateField<K extends keyof ResumeData>(
@@ -288,7 +315,7 @@ export default function ResumeGenerator() {
     setPdfUrl(null);
     setLoading(true);
     setLog((s) => s + "\\nTemplate/style changed — rebuilding");
-    
+
     // Immediately update LaTeX code for the new template
     try {
       const tex = generateResumeTex(data, selectedTemplate, {
@@ -296,15 +323,24 @@ export default function ResumeGenerator() {
         fontFamily,
         primaryColor,
         secondaryColor,
-          sectionSpacingMm,
+        sectionSpacingMm,
       });
       setLatexCode(tex);
     } catch (error) {
       console.error("Error generating LaTeX for template change:", error);
     }
-    
+
     scheduleBuild(data, selectedTemplate);
-  }, [selectedTemplate, pageSize, fontFamily, primaryColor, secondaryColor, data, scheduleBuild, sectionSpacingMm]);
+  }, [
+    selectedTemplate,
+    pageSize,
+    fontFamily,
+    primaryColor,
+    secondaryColor,
+    data,
+    scheduleBuild,
+    sectionSpacingMm,
+  ]);
 
   function addExperience() {
     setData((prev) => {
@@ -334,7 +370,7 @@ export default function ResumeGenerator() {
       return next;
     });
   }
-  
+
   function removeExperience(index: number) {
     setData((prev) => {
       const newExperiences = [...prev.experiences];
@@ -390,7 +426,7 @@ export default function ResumeGenerator() {
       fontFamily,
       primaryColor,
       secondaryColor,
-    sectionSpacingMm,
+      sectionSpacingMm,
     };
 
     switch (selectedTemplate) {
@@ -490,23 +526,44 @@ export default function ResumeGenerator() {
                       <button
                         onClick={loadUserData}
                         disabled={isLoadingUserData}
-                        title={isLoadingUserData ? "Loading sample data" : "Load sample data"}
-                        aria-label={isLoadingUserData ? "Loading sample data" : "Load sample data"}
+                        title={
+                          isLoadingUserData
+                            ? "Loading sample data"
+                            : "Load sample data"
+                        }
+                        aria-label={
+                          isLoadingUserData
+                            ? "Loading sample data"
+                            : "Load sample data"
+                        }
                         className="p-2 sm:px-3 sm:py-2 bg-blue-600 text-white rounded text-xs flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700"
                       >
                         <User className="h-4 w-4" />
-                        <span className="hidden sm:inline">{isLoadingUserData ? "Loading..." : "Load Sample Data"}</span>
+                        <span className="hidden sm:inline">
+                          {isLoadingUserData
+                            ? "Loading..."
+                            : "Load Sample Data"}
+                        </span>
                       </button>
 
                       <button
                         onClick={saveUserData}
-                        disabled={isSavingUserData || (!hasUnsavedChanges && autoSaveEnabled)}
-                        title={isSavingUserData ? "Saving changes" : "Save changes"}
-                        aria-label={isSavingUserData ? "Saving changes" : "Save changes"}
+                        disabled={
+                          isSavingUserData ||
+                          (!hasUnsavedChanges && autoSaveEnabled)
+                        }
+                        title={
+                          isSavingUserData ? "Saving changes" : "Save changes"
+                        }
+                        aria-label={
+                          isSavingUserData ? "Saving changes" : "Save changes"
+                        }
                         className="p-2 sm:px-3 sm:py-2 bg-green-600 text-white rounded text-xs flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-700"
                       >
                         <Save className="h-4 w-4" />
-                        <span className="hidden sm:inline">{isSavingUserData ? "Saving..." : "Save Changes"}</span>
+                        <span className="hidden sm:inline">
+                          {isSavingUserData ? "Saving..." : "Save Changes"}
+                        </span>
                       </button>
 
                       <button
@@ -530,8 +587,11 @@ export default function ResumeGenerator() {
                     </div>
                   )}
                   <div className="mt-2 text-xs text-gray-400">
-                    Click "Load Sample Data" to populate all fields with test data. You can then edit any field as needed. 
-                    {autoSaveEnabled ? " Changes will be auto-saved every 3 seconds." : " Manual save required."}
+                    Click "Load Sample Data" to populate all fields with test
+                    data. You can then edit any field as needed.
+                    {autoSaveEnabled
+                      ? " Changes will be auto-saved every 3 seconds."
+                      : " Manual save required."}
                   </div>
                 </div>
               </div>
@@ -626,19 +686,36 @@ export default function ResumeGenerator() {
                       <button
                         onClick={() => {
                           try {
-                            const tex = generateResumeTex(data, selectedTemplate, {
-                              pageSize,
-                              fontFamily,
-                              primaryColor,
-                              secondaryColor,
-                            });
+                            const tex = generateResumeTex(
+                              data,
+                              selectedTemplate,
+                              {
+                                pageSize,
+                                fontFamily,
+                                primaryColor,
+                                secondaryColor,
+                              }
+                            );
                             setLatexCode(tex);
                             if (wsRef.current?.readyState === WebSocket.OPEN) {
-                              wsRef.current.send(JSON.stringify({ type: "edit", tex }));
-                              setLog((s) => s + "\\nSynced LaTeX code with current template");
+                              wsRef.current.send(
+                                JSON.stringify({ type: "edit", tex })
+                              );
+                              setLog(
+                                (s) =>
+                                  s +
+                                  "\\nSynced LaTeX code with current template"
+                              );
                             }
                           } catch (error) {
-                            setLog((s) => s + "\\nError syncing LaTeX: " + (error instanceof Error ? error.message : "Unknown error"));
+                            setLog(
+                              (s) =>
+                                s +
+                                "\\nError syncing LaTeX: " +
+                                (error instanceof Error
+                                  ? error.message
+                                  : "Unknown error")
+                            );
                           }
                         }}
                         className="text-xs px-2 py-1 bg-blue-600 text-white rounded"
@@ -646,7 +723,9 @@ export default function ResumeGenerator() {
                         Sync LaTeX
                       </button>
                       {loading && (
-                        <div className="text-xs text-yellow-400">Building...</div>
+                        <div className="text-xs text-yellow-400">
+                          Building...
+                        </div>
                       )}
                       {pdfUrl && (
                         <a

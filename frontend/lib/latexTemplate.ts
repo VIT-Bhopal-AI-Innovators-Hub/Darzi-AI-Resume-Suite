@@ -17,13 +17,18 @@ export type ResumeData = {
   }>;
   skills: string[];
   links: Array<{
-    name: string;
+    label: string;
     url: string;
   }>;
   customSections?: Array<{
     id: string;
     title: string;
     content: string;
+  }>;
+  projects?: Array<{
+    name: string;
+    description: string;
+    link?: string;
   }>;
 };
 
@@ -88,6 +93,7 @@ export function generateResumeTex(
     primaryColor?: string;
     secondaryColor?: string;
   sectionSpacingMm?: number;
+  sectionOrder?: string[];
   }
 ): string {
   
@@ -163,9 +169,9 @@ function processResumeData(data: ResumeData, options?: {
   const skillsList = skillsItems ? `\\begin{itemize}[leftmargin=*,itemsep=${sectionSpacingSmall}mm,parsep=0pt]\n${skillsItems}\n\\end{itemize}` : '';
 
   const linksList = (data.links || [])
-    .filter(link => link && (link.name?.trim() || link.url?.trim()))
+    .filter(link => link && (link.label?.trim() || link.url?.trim()))
     .map((link) => {
-      const label = escapeLatex(link.name?.trim() || '');
+      const label = escapeLatex(link.label?.trim() || '');
       const url = escapeLatex(link.url?.trim() || '');
       if (label && url) {
         return `\\href{${url}}{${label}}`;
@@ -181,9 +187,9 @@ function processResumeData(data: ResumeData, options?: {
 
   // Create a links section (LaTeX lines) to append after skills
   const linksSection = (data.links || [])
-    .filter(link => link && (link.name?.trim() || link.url?.trim()))
+    .filter(link => link && (link.label?.trim() || link.url?.trim()))
     .map((link) => {
-      const label = escapeLatex(link.name?.trim() || '');
+      const label = escapeLatex(link.label?.trim() || '');
       const url = escapeLatex(link.url?.trim() || '');
       if (label && url) return `\\href{${url}}{${label}}`;
       if (url) return `\\href{${url}}{${url}}`;
