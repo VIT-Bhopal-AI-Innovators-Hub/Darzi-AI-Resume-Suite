@@ -1,12 +1,11 @@
 import React, { useState } from "react";
-import { Logo } from "@/components/logo";
+import { LogoFull } from "@/components/logo";
 import {
   Home,
   FileText,
   FilePlus2,
   // User,
   // Settings,
-  HelpCircle,
   Menu,
   Target,
   // LayoutTemplate,
@@ -107,8 +106,7 @@ export default function Sidebar({
         <div className="flex items-center justify-center mb-8 relative h-12">
           {!isCollapsed ? (
             <h1 className="text-2xl font-bold text-white tracking-wider whitespace-nowrap">
-              <Logo className="mr-2 inline-block" />
-              DARZI
+              <LogoFull className="mr-2 inline-block" />
             </h1>
           ) : (
             <button
@@ -165,11 +163,19 @@ export default function Sidebar({
             >
               Templates
             </NavItem>
-            <DisabledNavItem
+            <NavItem
+              icon={<Target />}
+              href="/ats-checker"
+              active={pathname === "/ats-checker"}
+              isCollapsed={isCollapsed}
+            >
+              ATS Checker
+            </NavItem>
+            {/* <DisabledNavItem
               icon={<Target />}
               label="ATS Checker"
               isCollapsed={isCollapsed}
-            />
+            /> */}
             {/* Account section - always stays below main nav item
             <div className="mt-6">
               {!isCollapsed && (
