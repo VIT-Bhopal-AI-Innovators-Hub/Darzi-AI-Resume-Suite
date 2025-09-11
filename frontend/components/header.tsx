@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 
 const menuItems = [
     { name: 'Home', href: '/' },
+    { name: 'About', href: '/about' },
     { name: 'Features', href: '#features' },
     { name: 'Team', href: '#team' },
 ]
@@ -105,10 +106,10 @@ const HeroHeader = () => {
                                         {(() => {
                                             if (!isLoaded) return <span>Loading...</span>;
                                             return (
-                                                <>
+                                                <div className='flex items-center gap-2 select-none cursor-pointer gap-2'>
                                                     <span className="font-medium text-sm">{user?.firstName || user?.username || "User"}</span>
                                                     <UserButton afterSignOutUrl="/" />
-                                                </>
+                                                </div>
                                             );
                                         })()}
                                     </div>

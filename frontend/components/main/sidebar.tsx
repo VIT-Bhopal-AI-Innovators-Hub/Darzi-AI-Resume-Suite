@@ -4,12 +4,8 @@ import {
   Home,
   FileText,
   FilePlus2,
-  // User,
-  // Settings,
   Menu,
   Target,
-  // LayoutTemplate,
-  BarChart3,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -156,14 +152,6 @@ export default function Sidebar({
               Resume Editor
             </NavItem>
             <NavItem
-              icon={<BarChart3 />}
-              href="/templates"
-              active={pathname === "/templates"}
-              isCollapsed={isCollapsed}
-            >
-              Templates
-            </NavItem>
-            <NavItem
               icon={<Target />}
               href="/ats-checker"
               active={pathname === "/ats-checker"}
@@ -171,6 +159,14 @@ export default function Sidebar({
             >
               ATS Checker
             </NavItem>
+            {/* <NavItem
+              icon={<BarChart3 />}
+              href="/templates"
+              active={pathname === "/templates"}
+              isCollapsed={isCollapsed}
+            >
+              Templates
+            </NavItem> */}
             {/* <DisabledNavItem
               icon={<Target />}
               label="ATS Checker"
