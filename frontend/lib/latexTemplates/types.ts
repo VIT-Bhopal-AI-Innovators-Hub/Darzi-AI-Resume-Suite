@@ -1,0 +1,22 @@
+export type TemplateParams = {
+  name: string;
+  title: string;
+  email: string;
+  phone: string;
+  location: string;
+  website: string;
+  summary: string;
+  experiences: string;
+  education: string;
+  skillsList: string;
+  linksSection: string;
+  customSectionsTex: string;
+  educationShort: string;
+  coloredFullContactLine: string;
+  sectionSpacingSmall: number;
+  sectionSpacingMedium: number;
+  pageSize: 'a4' | 'letter';
+  fontFamily: string;
+  primaryColorRGB: { r: number; g: number; b: number };
+  secondaryColorRGB: { r: number; g: number; b: number };
+};
