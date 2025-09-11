@@ -192,3 +192,24 @@
 .monaco-editor .minimap .minimap-slider:hover {
   background-color: rgba(156, 163, 175, 0.5) !important;
 }
+
+
+
+/* custom scroll */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #111;
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}
