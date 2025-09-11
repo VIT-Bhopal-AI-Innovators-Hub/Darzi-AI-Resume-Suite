@@ -83,7 +83,7 @@ const StatCard = ({
 
 const WelcomeCard = ({ name }: { name: string }) => (
   <Card className="flex flex-col justify-between h-full !p-0 overflow-hidden relative">
-    <div className="absolute inset-0 bg-gradient-to-br from-gray-900 to-black opacity-80"></div>
+    <div className="absolute inset-0 bg-gradient-to-br opacity-80"></div>
     <div className="p-6 pb-0 z-10">
       <p className="text-white text-sm">Welcome,</p>
       <h3 className="text-white text-2xl font-bold">{name}</h3>
