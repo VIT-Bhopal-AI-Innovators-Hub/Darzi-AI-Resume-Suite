@@ -20,7 +20,7 @@ from utils.llm.manager import LLMManager
 from utils.data_extractor.core import extract_text as vision_extract_text
 
 
-app = FastAPI(title="DARZI AI Resume Suite API", docs_url=None, redoc_url=None, openapi_url="/openapi.json")
+app = FastAPI(title="DARZI AI Resume Suite API", openapi_url="/openapi.json")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

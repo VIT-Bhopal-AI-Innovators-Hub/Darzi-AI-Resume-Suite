@@ -10,6 +10,7 @@ import FooterSection from '@/components/footer'
 import { AnimatedGroup } from '@/components/animated-group'
 import { ArrowRight, Users, Target, Lightbulb, Globe, Zap } from 'lucide-react'
 import type { Variants } from 'framer-motion'
+import { Logo } from '@/components/logo'
 
 const transitionVariants: { item: Variants } = {
     item: {
@@ -259,13 +260,7 @@ export default function AboutPage() {
                             <div className="text-center">
                                 <div className="mx-auto mb-6 h-24 w-24 overflow-hidden rounded-full bg-gradient-to-r from-blue-500 to-purple-500 p-1">
                                     <div className="flex h-full w-full items-center justify-center rounded-full bg-white dark:bg-gray-900">
-                                        <Image
-                                            src="/logo.png"
-                                            alt="VIT Bhopal AI Innovators Hub"
-                                            width={60}
-                                            height={60}
-                                            className="h-15 w-15 object-contain"
-                                        />
+                                        <Logo className='h-15'/>
                                     </div>
                                 </div>
                                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white">

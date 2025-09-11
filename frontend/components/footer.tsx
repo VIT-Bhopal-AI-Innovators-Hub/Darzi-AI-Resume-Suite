@@ -9,12 +9,7 @@ export default function FooterSection() {
                     <div className="flex flex-wrap items-end justify-between gap-6">
                         {/* Logo on the left, above the copyright */}
                         <div className="flex flex-col items-start">
-                            <Link
-                                href="/"
-                                aria-label="go home"
-                                className="block size-fit mb-4">
-                                <Logo />
-                            </Link>
+                            <Logo className='block size-fit mb-4 h-8' />
                             <span className="text-muted-foreground block text-left text-sm">
                                 © {new Date().getFullYear()} VIT Bhopal AI Innovators Hub, All rights reserved
                             </span>

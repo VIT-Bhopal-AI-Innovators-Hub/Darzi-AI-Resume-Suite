@@ -1,16 +1,11 @@
 import React, { useState } from "react";
-import { Logo } from "@/components/logo";
+import { LogoFull } from "@/components/logo";
 import {
   Home,
   FileText,
   FilePlus2,
-  // User,
-  // Settings,
-  HelpCircle,
   Menu,
   Target,
-  // LayoutTemplate,
-  BarChart3,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -106,7 +101,7 @@ export default function Sidebar({
         {/* Header */}
         <div className="flex items-center justify-left mb-8 relative h-12">
           {!isCollapsed ? (
-            <h1 className="text-2xl font-bold text-white tracking-wider whitespace-nowrap ml-4">
+            <h1 className="text-2xl font-bold text-white tracking-wider whitespace-nowrap">
               <Logo className="mr-2 inline-block" />
               DARZI
             </h1>
@@ -158,18 +153,26 @@ export default function Sidebar({
               Resume Editor
             </NavItem>
             <NavItem
+              icon={<Target />}
+              href="/ats-checker"
+              active={pathname === "/ats-checker"}
+              isCollapsed={isCollapsed}
+            >
+              ATS Checker
+            </NavItem>
+            {/* <NavItem
               icon={<BarChart3 />}
               href="/templates"
               active={pathname === "/templates"}
               isCollapsed={isCollapsed}
             >
               Templates
-            </NavItem>
-            <DisabledNavItem
+            </NavItem> */}
+            {/* <DisabledNavItem
               icon={<Target />}
               label="ATS Checker"
               isCollapsed={isCollapsed}
-            />
+            /> */}
             {/* Account section - always stays below main nav item
             <div className="mt-6">
               {!isCollapsed && (
