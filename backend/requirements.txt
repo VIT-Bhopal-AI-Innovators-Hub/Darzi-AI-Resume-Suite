@@ -1,0 +1,17 @@
+fastmcp==2.10.1
+mcp
+requests==2.32.3
+spacy==3.8.2
+nltk==3.9
+fastapi==0.115.0
+uvicorn==0.30.6
+python-multipart==0.0.9
+PyPDF2==3.0.1
+python-docx==1.1.2
+pydantic==2.11.7
+google-generativeai>=0.3.0
+
+
+#Additional PDF extraction methods (for your fallback options)
+pdfplumber>=0.10.3
+pymupdf>=1.23.0
