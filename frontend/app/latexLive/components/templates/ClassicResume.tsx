@@ -119,7 +119,7 @@ export default function ClassicResume({ data, primaryColor, secondaryColor, sect
       {/* Custom Sections */}
       {data.customSections && data.customSections.length > 0 && (
         <div style={{ marginBottom: sectionMb }}>
-          {data.customSections.map((sec, idx) => (
+          {data.customSections.map((sec) => (
             <div key={sec.id} style={{ marginBottom: smallMb }}>
               <h3 className="text-lg font-bold mb-2" style={{ color: primaryColor }}>{sec.title}</h3>
               <div className="text-sm" style={{ color: secondaryColor, whiteSpace: 'pre-wrap' }}>{sec.content}</div>

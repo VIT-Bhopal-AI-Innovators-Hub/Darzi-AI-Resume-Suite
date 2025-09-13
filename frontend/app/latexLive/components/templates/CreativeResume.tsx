@@ -14,6 +14,7 @@ export default function CreativeResume({ data, primaryColor, secondaryColor, sec
   const sectionMb = mmToPx(sectionSpacingMm);
   const smallMb = mmToPx(Math.max(0, sectionSpacingMm));
   const mediumMb = mmToPx(Math.max(1, Math.round(sectionSpacingMm * 1.5)));
+  void mediumMb;
   return (
     <div className="bg-white text-black min-h-full relative overflow-hidden" style={{ fontFamily: 'Georgia, serif' }}>
       {/* Background shapes */}

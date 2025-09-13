@@ -6,7 +6,7 @@ import {
   FilePlus2,
   // User,
   // Settings,
-  HelpCircle,
+  // HelpCircle,
   Menu,
   Target,
   // LayoutTemplate,

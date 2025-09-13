@@ -52,6 +52,7 @@ type NITJSRResumeParams = Omit<TemplateParams, 'education'> & {
 
 
 export function preamble(p: TemplateParams): string {
+  void p;
   return `\\documentclass[a4paper,11pt]{article}
 \\usepackage{latexsym}
 \\usepackage{xcolor}

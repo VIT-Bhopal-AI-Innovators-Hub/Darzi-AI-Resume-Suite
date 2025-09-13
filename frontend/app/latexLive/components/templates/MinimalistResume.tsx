@@ -59,17 +59,18 @@ export default function MinimalistResume({
 }: MinimalistResumeProps) {
   const mmToPx = (mm: number) => `${Math.round(mm * 3.78)}px`;
   const sectionMb = mmToPx(sectionSpacingMm);
+  void sectionMb;
   const smallMb = mmToPx(Math.max(0, sectionSpacingMm));
   const mediumMb = mmToPx(Math.max(1, Math.round(sectionSpacingMm * 1.5)));
   const columnGap = mmToPx(5);
 
   // CSS variables used for fine control
-  const rootVars: React.CSSProperties = {
-    ["--primary-color" as any]: primaryColor,
-    ["--secondary-color" as any]: secondaryColor,
-    ["--section-spacing" as any]: `${sectionSpacingMm}mm`,
-    ["--small-spacing" as any]: smallMb,
-    ["--medium-spacing" as any]: mediumMb,
+  const rootVars: React.CSSProperties & Record<string, string> = {
+    ['--primary-color']: primaryColor,
+    ['--secondary-color']: secondaryColor,
+    ['--section-spacing']: `${sectionSpacingMm}mm`,
+    ['--small-spacing']: smallMb,
+    ['--medium-spacing']: mediumMb,
     fontFamily:
       fontFamily === "sans-serif"
         ? "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif"

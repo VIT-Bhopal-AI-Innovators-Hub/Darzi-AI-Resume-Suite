@@ -17,8 +17,10 @@ const SectionTitle = ({ children, color }: { children: React.ReactNode; color: s
 
 export default function ModernResume({ data, primaryColor, secondaryColor }: ModernResumeProps) {
   const mmToPx = (mm = 3) => `${Math.round(mm * 3.78)}px`;
-  const baseSpacing = mmToPx(3);
-  const sectionSpacing = mmToPx( Math.max(0, 3) );
+  void mmToPx;
+  // spacing utilities (currently not used by layout)
+  // const baseSpacing = mmToPx(3);
+  // const sectionSpacing = mmToPx( Math.max(0, 3) );
 
   return (
     <div className="bg-white text-gray-800 min-h-full" style={{ fontFamily: 'Arial, sans-serif' }}>
@@ -51,7 +53,7 @@ export default function ModernResume({ data, primaryColor, secondaryColor }: Mod
                     <div key={i} className="flex flex-col">
                       <div className="flex justify-between items-baseline">
                         <h3 className="font-bold">{edu.degree}</h3>
-                        { (edu as any).date && <div className="text-xs text-gray-600">{(edu as any).date}</div> }
+                        { edu.date && <div className="text-xs text-gray-600">{edu.date}</div> }
                       </div>
                       <div className="font-medium" style={{ color: secondaryColor }}>{edu.school}</div>
                     </div>
@@ -109,7 +111,7 @@ export default function ModernResume({ data, primaryColor, secondaryColor }: Mod
                       <h3 className="font-bold text-lg">{exp.role}</h3>
                       <div className="font-semibold text-md" style={{ color: secondaryColor }}>{exp.company}</div>
                     </div>
-                    { (exp as any).date && <div className="text-xs text-gray-600 font-mono">{(exp as any).date}</div> }
+                    { exp.date && <div className="text-xs text-gray-600 font-mono">{exp.date}</div> }
                   </div>
                   <ul className="text-sm ml-4 list-disc space-y-1">
                     {exp.bullets && exp.bullets.map((b, bi) => (

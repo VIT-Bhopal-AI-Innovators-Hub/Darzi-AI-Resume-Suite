@@ -412,7 +412,7 @@ export default function ResumeEditorPage() {
                     </button>
                   </div>
 
-                  {sections.map((section, sIdx) => (
+                  {sections.map((section) => (
                     <div
                       key={section.id}
                       className="border border-white/10 rounded-lg p-4 space-y-4 bg-black/40"
