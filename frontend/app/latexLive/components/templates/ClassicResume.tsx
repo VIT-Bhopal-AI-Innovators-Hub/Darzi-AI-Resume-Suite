@@ -106,9 +106,9 @@ export default function ClassicResume({ data, primaryColor, secondaryColor, sect
             LINKS
           </h3>
           <div className="space-y-1">
-            {data.links.filter(link => link.name.trim() || link.url.trim()).map((link, index) => (
+            {data.links.filter(link => link.label.trim() || link.url.trim()).map((link, index) => (
               <div key={index} className="text-sm" style={{ marginBottom: smallMb }}>
-                <span className="font-medium">{link.name}: </span>
+                <span className="font-medium">{link.label}: </span>
                 <span style={{ color: secondaryColor }}>{link.url}</span>
               </div>
             ))}

@@ -163,8 +163,11 @@ Analyze the resume text and extract ALL information into a flexible JSON structu
         if not isinstance(data, dict):
             return data
         
+        print(f"before cleaning: {data}")
+        
         cleaned = {}
         for key, value in data.items():
+            print(f"Processing key '{key}' with value: {value} (type: {type(value)})")
             if value is not None and value != "" and value != []:
                 if isinstance(value, dict):
                     cleaned_value = self._clean_empty_fields(value)
@@ -180,9 +183,33 @@ Analyze the resume text and extract ALL information into a flexible JSON structu
                         cleaned[key] = cleaned_list
                 else:
                     cleaned[key] = value
-        
+        print(f"AFTER cleaning: {cleaned}")
         return cleaned
     
+    
+        # for key, value in data.items():
+        #     if value is not None:
+        #         if isinstance(value, str) and value.strip():
+        #             cleaned[key] = value
+        #         elif isinstance(value, (int, float, bool)):
+        #             cleaned[key] = value
+        #         elif isinstance(value, dict):
+        #             cleaned_value = self._clean_empty_fields(value)
+        #         if cleaned_value:  # Only add if not empty
+        #             cleaned[key] = cleaned_value
+        #     elif isinstance(value, list) and value:  # Keep non-empty lists
+        #         cleaned_list = [
+        #             self._clean_empty_fields(item) if isinstance(item, dict) else item
+        #             for item in value
+        #             if item is not None and (not isinstance(item, str) or item.strip())
+        #         ]
+        #         if cleaned_list:
+        #             cleaned[key] = cleaned_list
+        #     elif key == '_parsed_by':
+        #         cleaned[key] = value
+        # return cleaned
+
+
     def parse_resume_with_llm(self, text: str, preferred_provider: Optional[str] = None) -> Dict[str, Any]:
         """
         Parse resume using LLM with fallback support

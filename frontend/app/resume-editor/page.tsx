@@ -1,246 +1,414 @@
 "use client";
 
-import React, { useState } from "react";
-import Sidebar from "../../components/main/sidebar";
-import Header from "@/components/main/header";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
-import { Bot, Plus, Trash2 } from "lucide-react";
+import Sidebar from "../../components/main/sidebar";
+import Header from "../../components/main/header";
 import FooterSection from "@/components/footer";
+import { generateResumeTex, ResumeData } from "@/lib/latexTemplate";
 
-type SectionEntry = {
-  id: string;
-  position: string;
-  organization: string;
-  start: string;
-  end: string;
-  bullets: string[];
-  linkLabel?: string;
-  linkUrl?: string;
-};
-type Section = {
-  id: string;
-  name: string;
-  entries: SectionEntry[];
-};
+// Import components
+import ViewTabs from "./components/ViewTabs";
+import LaTeXSettingsPanel from "./components/LaTeXSettings";
+import LaTeXEditor from "./components/LaTeXEditor";
+import PDFPreview from "./components/PDFPreview";
+import ResumeForm from "./components/ResumeForm";
 
-export default function ResumeEditorPage() {
+// Import types
+import { 
+  ResumeFormData, 
+  LaTeXSettings, 
+  ResumeSection, 
+  CustomSection 
+} from "./components/types";
+import { Resume } from "@/types/resume";
+
+export default function ResumeEditor() {
+  // Sidebar state
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [fullName, setFullName] = useState("");
-  const [title, setTitle] = useState("");
-  const [summary, setSummary] = useState("");
-  const [skills, setSkills] = useState<string>("React, TypeScript, Next.js");
-  const [sections, setSections] = useState<Section[]>([
-    {
-      id: crypto.randomUUID(),
-      name: "Experience",
-      entries: [
-        {
-          id: crypto.randomUUID(),
-          position: "Frontend Engineer",
-          organization: "Your Company Here",
-          start: "20XX-01",
-          end: "Present",
-          bullets: ["Built reusable UI", "Improved performance by 25%"],
-          linkLabel: "Portfolio",
-          linkUrl: "", // cleared to avoid accidental leftover link
-        },
-      ],
-    },
-    {
-      id: crypto.randomUUID(),
-      name: "Education",
-      entries: [
-        {
-          id: crypto.randomUUID(),
-          position: "B.S. Computer Science",
-          organization: "University Name",
-          start: "20XX-09",
-          end: "20XX-06",
-          bullets: [
-            "Graduated with Honors (GPA 9.0/10.0)",
-            "Relevant Coursework: Algorithms, Systems, Databases",
-          ],
-          linkLabel: "Transcript",
-          linkUrl: "",
-        },
-      ],
-    },
-    {
-      id: crypto.randomUUID(),
-      name: "Misc",
-      entries: [
-        {
-          id: crypto.randomUUID(),
-          position: "Open Source Contributor",
-          organization: "GitHub",
-          start: "20XX-04",
-          end: "Present",
-          bullets: [
-            "Contributed to 5+ popular React libraries",
-            "Maintainer of a small utility with 1k+ monthly downloads",
-          ],
-          linkLabel: "GitHub Profile",
-          linkUrl: "", // left empty to not be left in accidentsally
-        },
-      ],
-    },
+
+  // View state
+  const [activeTab, setActiveTab] = useState<"form" | "latex">("form");
+
+  // LaTeX integration state
+  const [latexCode, setLatexCode] = useState("");
+  const [pdfUrl, setPdfUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [autoRender, setAutoRender] = useState(true);
+  const [wsConnected, setWsConnected] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // LaTeX settings
+  const [latexSettings, setLatexSettings] = useState<LaTeXSettings>({
+    selectedTemplate: "modern",
+    pageSize: "letter",
+    fontFamily: "sans-serif",
+    primaryColor: "#2563eb",
+    secondaryColor: "#1e40af",
+  });
+
+  // Form data
+  const [formData, setFormData] = useState<ResumeFormData>({
+    fullName: "John Doe",
+    title: "Full Stack Developer",
+    summary: "Experienced developer with expertise in React, Node.js, and modern web technologies.",
+    skills: "React, TypeScript, Node.js, Python, AWS",
+    email: "john.doe@email.com",
+    phone: "+1 (555) 123-4567",
+    location: "San Francisco, CA",
+    website: "https://linkedin.com/in/johndoe",
+    links: [],
+    experiences: [],
+    educations: [],
+    projects: [],
+    customSections: [],
+  });
+
+  // Section order and visibility
+  const [sections, setSections] = useState<ResumeSection[]>([
+    { id: 'basic', type: 'basic', title: 'Basic Info', order: 0 },
+    { id: 'skills', type: 'skills', title: 'Skills', order: 1 },
+    { id: 'experience', type: 'experience', title: 'Work Experience', order: 2 },
+    { id: 'education', type: 'education', title: 'Education', order: 3 },
+    { id: 'projects', type: 'projects', title: 'Projects', order: 4 },
   ]);
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [location, setLocation] = useState("");
-  const [website, setWebsite] = useState("");
-  const [links, setLinks] = useState<
-    { id: string; label: string; url: string }[]
-  >([]);
 
-  const addSection = () =>
-    setSections((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        name: "New Section",
-        entries: [
-          {
-            id: crypto.randomUUID(),
-            position: "",
-            organization: "",
-            start: "",
-            end: "",
-            bullets: [""],
-            linkLabel: "",
-            linkUrl: "",
-          },
-        ],
-      },
-    ]);
+  const [customSections, setCustomSections] = useState<CustomSection[]>([]);
 
-  const updateSection = (id: string, patch: Partial<Section>) =>
-    setSections((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, ...patch } : s))
-    );
+  // Drag and drop state
+  const [draggedSection, setDraggedSection] = useState<string | null>(null);
 
-  const removeSection = (id: string) =>
-    setSections((prev) => prev.filter((s) => s.id !== id));
+  // WebSocket connection
+  const wsRef = useRef<WebSocket | null>(null);
+  const pdfUrlRef = useRef<string | null>(null);
 
-  const addEntry = (sectionId: string) =>
-    setSections((prev) =>
-      prev.map((s) =>
-        s.id === sectionId
-          ? {
-              ...s,
-              entries: [
-                ...s.entries,
-                {
-                  id: crypto.randomUUID(),
-                  position: "",
-                  organization: "",
-                  start: "",
-                  end: "",
-                  bullets: [""],
-                  linkLabel: "",
-                  linkUrl: "",
-                },
-              ],
+  // WebSocket setup
+  useEffect(() => {
+    const connectWebSocket = () => {
+      const ws = new WebSocket("wss://ayush-003-latexwebsocket.hf.space");
+
+      ws.onopen = () => {
+        wsRef.current = ws;
+        setWsConnected(true);
+        setError(null);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.type === "progress") {
+            setLoading(true);
+          } else if (data.type === "pdf") {
+            // Handle base64 PDF data
+            const arr = Uint8Array.from(atob(data.base64), (c) =>
+              c.charCodeAt(0)
+            );
+            const blob = new Blob([arr], { type: "application/pdf" });
+            const url = URL.createObjectURL(blob);
+
+            // Clean up previous URL
+            if (pdfUrlRef.current) {
+              URL.revokeObjectURL(pdfUrlRef.current);
             }
-          : s
-      )
-    );
 
-  const updateEntry = (
-    sectionId: string,
-    entryId: string,
-    patch: Partial<SectionEntry>
-  ) =>
-    setSections((prev) =>
-      prev.map((s) =>
-        s.id === sectionId
-          ? {
-              ...s,
-              entries: s.entries.map((e) =>
-                e.id === entryId ? { ...e, ...patch } : e
-              ),
-            }
-          : s
-      )
-    );
+            pdfUrlRef.current = url;
+            setPdfUrl(url);
+            setLoading(false);
+            setError(null);
+          } else if (data.type === "pdf_ready") {
+            setPdfUrl(data.pdf_url);
+            setLoading(false);
+            setError(null);
+          } else if (data.type === "error") {
+            setLoading(false);
+            setError(`Compilation error: ${data.message}`);
+          }
+        } catch (error) {
+          console.error("Error parsing WebSocket message:", error);
+          setLoading(false);
+          setError("Error parsing response from server");
+        }
+      };
 
-  const removeEntry = (sectionId: string, entryId: string) =>
-    setSections((prev) =>
-      prev.map((s) =>
-        s.id === sectionId
-          ? { ...s, entries: s.entries.filter((e) => e.id !== entryId) }
-          : s
-      )
-    );
+      ws.onclose = (event) => {
+        wsRef.current = null;
+        setWsConnected(false);
+        setError(`Connection lost: ${event.reason || "Unknown reason"}`);
+        // Reconnect after 3 seconds
+        setTimeout(connectWebSocket, 3000);
+      };
 
-  const updateBullet = (
-    sectionId: string,
-    entryId: string,
-    idx: number,
-    value: string
-  ) =>
-    setSections((prev) =>
-      prev.map((s) =>
-        s.id === sectionId
-          ? {
-              ...s,
-              entries: s.entries.map((e) =>
-                e.id === entryId
-                  ? {
-                      ...e,
-                      bullets: e.bullets.map((b, i) => (i === idx ? value : b)),
-                    }
-                  : e
-              ),
-            }
-          : s
-      )
-    );
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        setLoading(false);
+        setWsConnected(false);
+        setError("WebSocket connection failed");
+      };
+    };
 
-  const addBullet = (sectionId: string, entryId: string) =>
-    setSections((prev) =>
-      prev.map((s) =>
-        s.id === sectionId
-          ? {
-              ...s,
-              entries: s.entries.map((e) =>
-                e.id === entryId ? { ...e, bullets: [...e.bullets, ""] } : e
-              ),
-            }
-          : s
-      )
-    );
+    connectWebSocket();
 
-  const removeBullet = (sectionId: string, entryId: string, idx: number) =>
-    setSections((prev) =>
-      prev.map((s) =>
-        s.id === sectionId
-          ? {
-              ...s,
-              entries: s.entries.map((e) =>
-                e.id === entryId
-                  ? { ...e, bullets: e.bullets.filter((_, i) => i !== idx) }
-                  : e
-              ),
-            }
-          : s
-      )
-    );
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, []);
 
-  const addLink = () =>
-    setLinks((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), label: "", url: "" },
-    ]);
+  // Generate LaTeX code from form data
+  const generateLatexFromForm = useCallback(() => {
+    if (!formData.fullName.trim()) {
+      console.warn("Name is required to generate resume");
+      return "";
+    }
 
-  const updateLink = (
-    id: string,
-    patch: Partial<{ label: string; url: string }>
-  ) =>
-    setLinks((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+    const resumeData: ResumeData = {
+      name: formData.fullName,
+      title: formData.title,
+      email: formData.email,
+      phone: formData.phone,
+      location: formData.location,
+      website: formData.website,
+      summary: formData.summary,
+      skills: formData.skills
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+      experiences: formData.experiences.map((exp) => ({
+        company: exp.company,
+        role: exp.title,
+        start: exp.startDate,
+        end: exp.endDate,
+        bullets: exp.description.split("\n").filter(Boolean),
+      })),
+      education: formData.educations.map((edu) => ({
+        school: edu.institution,
+        degree: edu.degree,
+        start: edu.year,
+        end: edu.year,
+      })),
+      projects: formData.projects.map((proj) => ({
+        name: proj.name,
+        technologies: proj.technologies,
+        link: proj.link,
+        description: proj.description,
+      })),
+      customSections: customSections.map((section) => ({
+        id: section.id,
+        title: section.title,
+        content: section.content,
+      })),
+      links: [
+        ...formData.links.map((link) => ({
+          label: link.label,
+          url: link.url,
+        })),
+        // Include projects as links if they have URLs (for backward compatibility)
+        ...formData.projects
+          .filter((proj) => proj.link)
+          .map((proj) => ({
+            label: proj.name,
+            url: proj.link,
+          })),
+      ],
+    };
 
-  const removeLink = (id: string) =>
-    setLinks((prev) => prev.filter((l) => l.id !== id));
+    return generateResumeTex(resumeData, latexSettings.selectedTemplate, {
+      pageSize: latexSettings.pageSize,
+      fontFamily: latexSettings.fontFamily,
+      primaryColor: latexSettings.primaryColor,
+      secondaryColor: latexSettings.secondaryColor,
+      sectionOrder: sections
+        .filter(s => s.type !== 'basic')
+        .sort((a, b) => a.order - b.order)
+        .map(s => {
+          if (s.type === 'skills') return 'skills';
+          if (s.type === 'custom') {
+            const customSection = customSections.find(cs => cs.id === s.id);
+            return customSection?.title ? `custom-${customSection.title.toLowerCase().replace(/\s+/g, '-')}` : 'custom';
+          }
+          return s.type;
+        }),
+    });
+  }, [
+    formData,
+    customSections,
+    latexSettings,
+    sections,
+  ]);
+
+  // Build PDF
+  const buildPdf = useCallback(
+    (texCode?: string) => {
+      if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+        setError("WebSocket not connected. Please wait for connection...");
+        setLoading(false);
+        return;
+      }
+
+      const codeToCompile = texCode || latexCode || generateLatexFromForm();
+      setLoading(true);
+      setError(null);
+
+      // Set a timeout to prevent infinite loading
+      const timeout = setTimeout(() => {
+        setLoading(false);
+        setError("LaTeX compilation timed out. Please try again.");
+      }, 30000); // 30 second timeout
+
+      // Store timeout ID to clear it when we get a response
+      const timeoutId = timeout;
+
+      wsRef.current.send(
+        JSON.stringify({
+          type: "edit",
+          tex: codeToCompile,
+        })
+      );
+
+      // Clear timeout on success (we'll need to modify the message handler)
+      wsRef.current.addEventListener(
+        "message",
+        function handler() {
+          clearTimeout(timeoutId);
+          wsRef.current?.removeEventListener("message", handler);
+        },
+        { once: true }
+      );
+    },
+    [latexCode, generateLatexFromForm]
+  );
+
+  // Trigger initial build when WebSocket connects (only for form tab)
+  useEffect(() => {
+    if (wsConnected && formData.fullName && activeTab === "form" && autoRender) {
+      setTimeout(() => {
+        const initialLatex = generateLatexFromForm();
+        if (initialLatex) {
+          setLatexCode(initialLatex);
+          buildPdf(initialLatex);
+        }
+      }, 1000);
+    }
+  }, [wsConnected, formData.fullName, activeTab, autoRender, generateLatexFromForm, buildPdf]);
+
+  // Auto-build when form data changes (ONLY when in form tab)
+  useEffect(() => {
+    // Completely skip if not in form tab - this prevents overwriting LaTeX edits
+    if (activeTab !== "form") {
+      return;
+    }
+    
+    // Only auto-build if we're in form tab with auto-render on
+    if (autoRender) {
+      const timeoutId = setTimeout(() => {
+        const newLatexCode = generateLatexFromForm();
+        setLatexCode(newLatexCode);
+        buildPdf(newLatexCode);
+      }, 1000); // Debounce for 1 second
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [
+    activeTab,
+    autoRender,
+    formData,
+    customSections,
+    latexSettings,
+    sections,
+    generateLatexFromForm,
+    buildPdf
+  ]);
+
+  // Manual build
+  const manualBuild = () => {
+    const newLatexCode =
+      activeTab === "form" ? generateLatexFromForm() : latexCode;
+    if (activeTab === "form") {
+      setLatexCode(newLatexCode);
+    }
+    buildPdf(newLatexCode);
+  };
+
+  // Auto-build when LaTeX code changes (in LaTeX tab)
+  const debouncedLatexBuild = useCallback(() => {
+    if (autoRender && activeTab === "latex" && latexCode) {
+      buildPdf(latexCode);
+    }
+  }, [autoRender, activeTab, latexCode, buildPdf]);
+
+  useEffect(() => {
+    if (autoRender && activeTab === "latex" && latexCode) {
+      const timeoutId = setTimeout(debouncedLatexBuild, 5000); // 5 second debounce for LaTeX editing
+      return () => clearTimeout(timeoutId);
+    }
+  }, [latexCode, autoRender, activeTab, debouncedLatexBuild]);
+
+  // Smart tab switching
+  const handleTabSwitch = (newTab: "form" | "latex") => {
+    if (newTab === "latex" && activeTab === "form") {
+      // Switching to LaTeX tab - generate current LaTeX code from form
+      const currentLatex = generateLatexFromForm();
+      setLatexCode(currentLatex);
+    }
+    setActiveTab(newTab);
+  };
+
+  // Drag and Drop Functions
+  const handleDragStart = (e: React.DragEvent, sectionId: string) => {
+    setDraggedSection(sectionId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, targetSectionId: string) => {
+    e.preventDefault();
+    if (!draggedSection || draggedSection === targetSectionId) return;
+
+    const newSections = [...sections];
+    const draggedIndex = newSections.findIndex(s => s.id === draggedSection);
+    const targetIndex = newSections.findIndex(s => s.id === targetSectionId);
+
+    if (draggedIndex !== -1 && targetIndex !== -1) {
+      // Remove dragged section and insert at target position
+      const [removed] = newSections.splice(draggedIndex, 1);
+      newSections.splice(targetIndex, 0, removed);
+      
+      // Update order values
+      newSections.forEach((section, index) => {
+        section.order = index;
+      });
+
+      setSections(newSections);
+    }
+    setDraggedSection(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedSection(null);
+  };
+
+  // Form data change handler
+  const handleFormDataChange = (updates: Partial<ResumeFormData>) => {
+    setFormData(prev => ({ ...prev, ...updates }));
+  };
+
+  // LaTeX settings change handler
+  const handleLatexSettingsChange = (updates: Partial<LaTeXSettings>) => {
+    setLatexSettings(prev => ({ ...prev, ...updates }));
+  };
+
+  // PDF retry handler
+  const handleRetry = () => {
+    setError(null);
+    window.location.reload();
+  };
 
   return (
     <>
@@ -254,7 +422,7 @@ export default function ResumeEditorPage() {
           >
             <Header pageName="Resume Editor" />
             <div className="p-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
-              {/* MAIN editor panel */}
+              {/* LEFT SIDE - Form & Controls */}
               <div className="space-y-6">
                 <section className="bg-white/5 border border-white/10 rounded-xl p-5">
                   <h2 className="font-bold mb-4 text-sm tracking-wide">
@@ -600,117 +768,17 @@ export default function ResumeEditorPage() {
                 </section>
               </div>
 
-              {/* PREVIEW */}
-              <div className="space-y-6">
-                <section className="bg-white/5 border border-white/10 rounded-xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="font-bold text-sm tracking-wide">
-                      LIVE PREVIEW
-                    </h2>
-                    <button className="text-xs bg-white text-black font-semibold px-3 py-1.5 rounded-md hover:bg-gray-200">
-                      Export (Coming Soon)
-                    </button>
-                  </div>
-                  <div className="bg-white text-black rounded-md p-8 text-sm leading-relaxed font-[350] shadow-inner">
-                    <h1 className="text-2xl font-semibold tracking-wide">
-                      {fullName || "John Doe"}
-                    </h1>
-                    <p className="uppercase tracking-wide text-xs mt-1 text-gray-600">
-                      {title || "Frontend Engineer"}
-                    </p>
-                    {([email, phone, location, website].some(Boolean) ||
-                      links.length > 0) && (
-                      <p className="text-[11px] mt-2 text-gray-700 flex flex-wrap gap-x-2 gap-y-1">
-                        {email && <span>{email}</span>}
-                        {phone && <span>{phone}</span>}
-                        {location && <span>{location}</span>}
-                        {website && <span>{website}</span>}
-                        {links
-                          .filter((l) => l.url || l.label)
-                          .map((l) => {
-                            const text = l.label || l.url;
-                            const href =
-                              l.url ||
-                              (l.label?.startsWith("http") ? l.label : "");
-                            return href ? (
-                              <a
-                                key={l.id}
-                                href={href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="underline"
-                              >
-                                {text}
-                              </a>
-                            ) : (
-                              <span key={l.id}>{text}</span>
-                            );
-                          })}
-                      </p>
-                    )}
-                    <hr className="my-4 border-gray-300" />
-                    {summary && <p className="text-[13px] mb-4">{summary}</p>}
-                    <h3 className="font-semibold text-sm tracking-wide mb-1">
-                      SKILLS
-                    </h3>
-                    <p className="text-[12px] mb-4">
-                      {skills
-                        .split(",")
-                        .map((s) => s.trim())
-                        .filter(Boolean)
-                        .join(" • ")}
-                    </p>
-                    <h3 className="font-semibold text-sm tracking-wide mb-2">
-                      {/* Dynamic heading */}
-                    </h3>
-                    <div className="space-y-6">
-                      {sections.map((section) => (
-                        <div key={section.id}>
-                          <h4 className="font-semibold text-sm tracking-wide mb-2">
-                            {section.name || "Section"}
-                          </h4>
-                          <div className="space-y-4">
-                            {section.entries.map((entry) => (
-                              <div key={entry.id}>
-                                <div className="flex justify-between">
-                                  <p className="font-semibold text-[13px]">
-                                    {entry.position || "Title"}
-                                    {entry.organization ? " | " : ""}
-                                    {entry.organization}
-                                    {entry.linkUrl && (
-                                      <a
-                                        href={entry.linkUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="ml-2 text-[11px] underline font-normal"
-                                      >
-                                        {entry.linkLabel || "Link"}
-                                      </a>
-                                    )}
-                                  </p>
-                                  <p className="text-[11px] text-gray-600">
-                                    {entry.start || "YYYY-MM"} -{" "}
-                                    {entry.end || "Present"}
-                                  </p>
-                                </div>
-                                <ul className="list-disc ml-4 mt-1 space-y-1">
-                                  {entry.bullets
-                                    .filter((b) => b.trim())
-                                    .map((b, i) => (
-                                      <li key={i} className="text-[12px]">
-                                        {b}
-                                      </li>
-                                    ))}
-                                </ul>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    {/* we can leave the rest of preview unchanged */}
-                  </div>
-                </section>
+              {/* RIGHT SIDE - PDF Preview */}
+              <div className="space-y-6 xl:sticky xl:top-4 xl:h-screen xl:overflow-y-auto">
+                <PDFPreview
+                  pdfUrl={pdfUrl}
+                  loading={loading}
+                  error={error}
+                  wsConnected={wsConnected}
+                  zoomLevel={zoomLevel}
+                  onZoomChange={setZoomLevel}
+                  onRetry={handleRetry}
+                />
               </div>
             </div>
             <FooterSection />
@@ -718,9 +786,7 @@ export default function ResumeEditorPage() {
         </div>
       </SignedIn>
       <SignedOut>
-        <div className="bg-black text-white min-h-screen flex items-center justify-center">
-          <RedirectToSignIn />
-        </div>
+        <RedirectToSignIn />
       </SignedOut>
     </>
   );
