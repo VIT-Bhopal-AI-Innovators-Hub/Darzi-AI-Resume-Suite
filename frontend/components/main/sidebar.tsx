@@ -99,10 +99,11 @@ export default function Sidebar({
     >
       <div className="relative h-full flex flex-col justify-between p-4 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-center mb-8 relative h-12">
+        <div className="flex items-center justify-left mb-8 relative h-12">
           {!isCollapsed ? (
             <h1 className="text-2xl font-bold text-white tracking-wider whitespace-nowrap">
               <LogoFull className="mr-2 inline-block" />
+              DARZI
             </h1>
           ) : (
             <button
