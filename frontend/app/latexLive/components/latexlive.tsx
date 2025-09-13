@@ -2,19 +2,11 @@
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
-import {
-  Eye,
-  X,
-  Download,
-  Code,
-  RefreshCw,
-  Save,
-  User,
-  Menu,
-} from "lucide-react";
-import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
-import { ResumeData, generateResumeTex } from "@/lib/latexTemplate";
-import ReconnectingWebSocket from "@/lib/reconnectingWebsocket";
+import { Eye, X, Download, Code, RefreshCw, Save, User, Menu } from "lucide-react";
+// Clerk removed from this component to avoid redundant errors
+import type { ResumeData } from "@/types/resume";
+import { generateResumeTex } from "@/lib/latexTemplate";
+import ReconnectingWebSocket from '@/lib/reconnectingWebsocket';
 import { UserDataService } from "@/lib/userDataService";
 import { useAutoSave } from "@/lib/hooks/useAutoSave";
 import Sidebar from "@/components/main/sidebar";
@@ -70,7 +62,7 @@ export default function ResumeGenerator() {
     customSections: [],
   });
   const [selectedTemplate, setSelectedTemplate] = useState<
-    "classic" | "modern" | "creative" | "professional" | "minimalist"
+    "classic" | "modern" | "Academic" | "creative" | "professional" | "minimalist"
   >("classic");
   const [pageSize, setPageSize] = useState<"a4" | "letter">("letter");
   const [fontFamily, setFontFamily] = useState<"serif" | "sans-serif" | "mono">(
@@ -86,6 +78,7 @@ export default function ResumeGenerator() {
     "preview"
   );
   const [latexCode, setLatexCode] = useState<string>("");
+  const [manualLatexPriority, setManualLatexPriority] = useState<boolean>(false);
 
   // New state for data management
   const [isLoadingUserData, setIsLoadingUserData] = useState<boolean>(false);
@@ -116,8 +109,8 @@ export default function ResumeGenerator() {
       setIsDataLoaded(true);
       setHasUnsavedChanges(false);
       setLog((s) => s + "\nUser data loaded successfully");
-
-      // Generate initial LaTeX code for the loaded data
+      
+      // Generate initial LaTeX code for the loaded data (only if not in manual priority)
       try {
         const tex = generateResumeTex(userData, selectedTemplate, {
           pageSize,
@@ -126,8 +119,12 @@ export default function ResumeGenerator() {
           secondaryColor,
           sectionSpacingMm,
         });
-        setLatexCode(tex);
-        setLog((s) => s + "\nGenerated LaTeX code for loaded data");
+        if (!manualLatexPriority) {
+          setLatexCode(tex);
+          setLog((s) => s + "\nGenerated LaTeX code for loaded data");
+        } else {
+          setLog((s) => s + "\nManual priority active — kept editor code on load");
+        }
       } catch (error) {
         console.error("Error generating initial LaTeX:", error);
         setLog(
@@ -145,20 +142,36 @@ export default function ResumeGenerator() {
     } finally {
       setIsLoadingUserData(false);
     }
-  }, [
-    selectedTemplate,
-    pageSize,
-    fontFamily,
-    primaryColor,
-    secondaryColor,
-    sectionSpacingMm,
-  ]);
+  }, [selectedTemplate, pageSize, fontFamily, primaryColor, secondaryColor, sectionSpacingMm, manualLatexPriority]);
 
   // Save user data to the service
   const saveUserData = useCallback(async () => {
     setIsSavingUserData(true);
     try {
-      await UserDataService.saveUserData(data);
+      // Sanitize data to match the expected ResumeData shape used by the UserDataService.
+      // This ensures required fields (like company, role, bullets) are present and of the correct type.
+      const sanitized: ResumeData = {
+        ...data,
+        experiences: (data.experiences || []).map((exp) => {
+          const bullets = Array.isArray(exp?.bullets)
+            ? exp.bullets.map((b) => b ?? "")
+            : [];
+          return {
+            company: exp?.company ?? "",
+            role: exp?.role ?? "",
+            bullets,
+          };
+        }),
+        education: (data.education || []).map((edu) => ({
+          school: edu?.school ?? "",
+          degree: edu?.degree ?? "",
+        })),
+        skills: Array.isArray(data.skills) ? data.skills : [],
+        links: Array.isArray(data.links) ? data.links : [],
+        customSections: Array.isArray(data.customSections) ? data.customSections : [],
+      };
+
+      await UserDataService.saveUserData(sanitized);
       setHasUnsavedChanges(false);
       setLog((s) => s + "\nUser data saved successfully");
     } catch (error) {
@@ -187,16 +200,18 @@ export default function ResumeGenerator() {
   const handleLatexCodeChange = useCallback((value: string | undefined) => {
     const newCode = value || "";
     setLatexCode(newCode);
-
+    // Once user edits the code, prioritize manual LaTeX for PDF builds
+    if (!manualLatexPriority) setManualLatexPriority(true);
+    
     // Debounce sending the code to WebSocket to avoid too many requests
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(() => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: "edit", tex: newCode }));
-        setLog((s) => s + "\\nSent manual edit to build");
+        setLog((s) => s + "\\nSent manual edit to build (manual priority)");
       }
     }, 1000) as unknown as number;
-  }, []);
+  }, [manualLatexPriority]);
 
   const connectWebSocket = useCallback(() => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) return;
@@ -257,6 +272,16 @@ export default function ResumeGenerator() {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
       debounceRef.current = window.setTimeout(() => {
         try {
+          if (manualLatexPriority) {
+            const code = latexCode;
+            if (wsRef.current?.readyState === WebSocket.OPEN) {
+              wsRef.current.send(JSON.stringify({ type: "edit", tex: code }));
+              setLog((s) => s + "\\nManual priority: sent editor code to build");
+              setLoading(true);
+            }
+            return;
+          }
+
           console.log("Building with template:", tmpl);
           const tex = generateResumeTex(latest, tmpl, {
             pageSize,
@@ -281,14 +306,7 @@ export default function ResumeGenerator() {
         }
       }, 700) as unknown as number;
     },
-    [
-      pageSize,
-      fontFamily,
-      primaryColor,
-      secondaryColor,
-      selectedTemplate,
-      sectionSpacingMm,
-    ]
+  [pageSize, fontFamily, primaryColor, secondaryColor, selectedTemplate, sectionSpacingMm, manualLatexPriority, latexCode]
   );
 
   function updateField<K extends keyof ResumeData>(
@@ -315,32 +333,27 @@ export default function ResumeGenerator() {
     setPdfUrl(null);
     setLoading(true);
     setLog((s) => s + "\\nTemplate/style changed — rebuilding");
-
-    // Immediately update LaTeX code for the new template
-    try {
-      const tex = generateResumeTex(data, selectedTemplate, {
-        pageSize,
-        fontFamily,
-        primaryColor,
-        secondaryColor,
-        sectionSpacingMm,
-      });
-      setLatexCode(tex);
-    } catch (error) {
-      console.error("Error generating LaTeX for template change:", error);
+    
+    if (!manualLatexPriority) {
+      // Immediately update LaTeX code for the new template when not in manual mode
+      try {
+        const tex = generateResumeTex(data, selectedTemplate, {
+          pageSize,
+          fontFamily,
+          primaryColor,
+          secondaryColor,
+          sectionSpacingMm,
+        });
+        setLatexCode(tex);
+      } catch (error) {
+        console.error("Error generating LaTeX for template change:", error);
+      }
+    } else {
+      setLog((s) => s + "\\nManual priority active — skipping auto LaTeX update");
     }
 
     scheduleBuild(data, selectedTemplate);
-  }, [
-    selectedTemplate,
-    pageSize,
-    fontFamily,
-    primaryColor,
-    secondaryColor,
-    data,
-    scheduleBuild,
-    sectionSpacingMm,
-  ]);
+  }, [selectedTemplate, pageSize, fontFamily, primaryColor, secondaryColor, data, scheduleBuild, sectionSpacingMm, manualLatexPriority]);
 
   function addExperience() {
     setData((prev) => {
@@ -434,6 +447,8 @@ export default function ResumeGenerator() {
         return <ClassicResume {...templateProps} />;
       case "modern":
         return <ModernResume {...templateProps} />;
+      case "Academic":
+        return <ModernResume {...templateProps} />;
       case "creative":
         return <CreativeResume {...templateProps} />;
       case "minimalist":
@@ -445,8 +460,7 @@ export default function ResumeGenerator() {
 
   return (
     <>
-      <SignedIn>
-        <div className="bg-black text-white min-h-screen font-sans">
+      <div className="bg-black text-white min-h-screen font-sans">
           <div className="hidden lg:block">
             <Sidebar onToggle={setSidebarCollapsed} />
           </div>
@@ -677,6 +691,42 @@ export default function ResumeGenerator() {
                   </div>
                   <div className="mt-2 space-y-2 mb-4">
                     <div className="flex items-center gap-2">
+                      <label className="flex items-center gap-2 text-xs bg-white/5 px-2 py-1 rounded">
+                        <input
+                          type="checkbox"
+                          checked={manualLatexPriority}
+                          onChange={async (e) => {
+                            const enabled = e.target.checked;
+                            setManualLatexPriority(enabled);
+                            if (enabled) {
+                              setLog((s) => s + "\\nManual priority enabled — editor code will be used");
+                              if (wsRef.current?.readyState === WebSocket.OPEN) {
+                                wsRef.current.send(JSON.stringify({ type: "edit", tex: latexCode }));
+                                setLoading(true);
+                              }
+                            } else {
+                              setLog((s) => s + "\\nManual priority disabled — using auto-generated LaTeX");
+                              try {
+                                const tex = generateResumeTex(data, selectedTemplate, {
+                                  pageSize,
+                                  fontFamily,
+                                  primaryColor,
+                                  secondaryColor,
+                                  sectionSpacingMm,
+                                });
+                                setLatexCode(tex);
+                                if (wsRef.current?.readyState === WebSocket.OPEN) {
+                                  wsRef.current.send(JSON.stringify({ type: "edit", tex }));
+                                  setLoading(true);
+                                }
+                              } catch (error) {
+                                setLog((s) => s + "\\nError generating LaTeX after disabling manual: " + (error instanceof Error ? error.message : "Unknown error"));
+                              }
+                            }
+                          }}
+                        />
+                        <span>Use editor for PDF</span>
+                      </label>
                       <button
                         onClick={() => setLogOpen(!logOpen)}
                         className="text-xs px-2 py-1 bg-gray-700 rounded"
@@ -684,28 +734,28 @@ export default function ResumeGenerator() {
                         {logOpen ? "Hide" : "Show"} Build Log
                       </button>
                       <button
+                        onClick={() => setLog("")}
+                        className="text-xs px-2 py-1 bg-gray-700 rounded"
+                        title="Clear build log"
+                      >
+                        Clear Log
+                      </button>
+                      <button
                         onClick={() => {
                           try {
-                            const tex = generateResumeTex(
-                              data,
-                              selectedTemplate,
-                              {
-                                pageSize,
-                                fontFamily,
-                                primaryColor,
-                                secondaryColor,
-                              }
-                            );
+                            // Exit manual mode and sync with generated LaTeX
+                            setManualLatexPriority(false);
+                            const tex = generateResumeTex(data, selectedTemplate, {
+                              pageSize,
+                              fontFamily,
+                              primaryColor,
+                              secondaryColor,
+                              sectionSpacingMm,
+                            });
                             setLatexCode(tex);
                             if (wsRef.current?.readyState === WebSocket.OPEN) {
-                              wsRef.current.send(
-                                JSON.stringify({ type: "edit", tex })
-                              );
-                              setLog(
-                                (s) =>
-                                  s +
-                                  "\\nSynced LaTeX code with current template"
-                              );
+                              wsRef.current.send(JSON.stringify({ type: "edit", tex }));
+                              setLog((s) => s + "\\nSynced LaTeX and disabled manual priority");
                             }
                           } catch (error) {
                             setLog(
@@ -834,12 +884,6 @@ export default function ResumeGenerator() {
             <FooterSection />
           </main>
         </div>
-      </SignedIn>
-      <SignedOut>
-        <div className="bg-black text-white min-h-screen flex items-center justify-center">
-          <RedirectToSignIn />
-        </div>
-      </SignedOut>
     </>
   );
 }

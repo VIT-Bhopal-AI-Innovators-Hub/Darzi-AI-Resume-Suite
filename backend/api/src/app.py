@@ -44,6 +44,238 @@ class AutoFixPayload(BaseModel):
 async def root():
     return RedirectResponse("https://github.com/VIT-Bhopal-AI-Innovators-Hub/Darzi-AI-Resume-Suite")
 
+# -----------------------------
+# Frontend schema mapper
+# -----------------------------
+
+def _as_list(value: Any) -> List[Any]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    return [value]
+
+
+def _first_non_empty(*values: Any, default: str = "") -> str:
+    for v in values:
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+    # sometimes a field can be a list/obj with a string inside
+    for v in values:
+        if isinstance(v, list) and v:
+            # pick first str-ish
+            for x in v:
+                if isinstance(x, str) and x.strip():
+                    return x.strip()
+        if isinstance(v, dict):
+            # try common keys
+            for k in ("text", "value", "name", "title"):
+                s = v.get(k)
+                if isinstance(s, str) and s.strip():
+                    return s.strip()
+    return default
+
+
+def _normalize_url(url: Any) -> Optional[str]:
+    if not isinstance(url, str):
+        return None
+    u = url.strip()
+    if not u:
+        return None
+    # add scheme if missing
+    if not (u.startswith("http://") or u.startswith("https://")):
+        return f"https://{u}"
+    return u
+
+
+def _flatten_skills(data: Any) -> List[str]:
+    # supports ["js", "ts"], or [{name:"js"}], or {category:[...]} structures
+    out: List[str] = []
+    if isinstance(data, list):
+        for item in data:
+            if isinstance(item, str) and item.strip():
+                out.append(item.strip())
+            elif isinstance(item, dict):
+                # JSON Resume often uses { name, level, keywords }
+                name = item.get("name")
+                if isinstance(name, str) and name.strip():
+                    out.append(name.strip())
+                kws = item.get("keywords")
+                if isinstance(kws, list):
+                    out.extend([str(x).strip() for x in kws if str(x).strip()])
+    elif isinstance(data, dict):
+        for v in data.values():
+            out.extend(_flatten_skills(v))
+    return list(dict.fromkeys(out))  # de-dupe while keeping order
+
+
+def _pick_website(root: Dict[str, Any]) -> str:
+    website = _first_non_empty(
+        root.get("website"),
+        root.get("portfolio"),
+        root.get("personal_website"),
+        root.get("url"),
+        default="",
+    )
+
+    if not website:
+        # try links-like structures
+        for coll_key in ("links", "profiles", "social", "contact_links"):
+            coll = root.get(coll_key)
+            if isinstance(coll, list):
+                for link in coll:
+                    if not isinstance(link, dict):
+                        continue
+                    name = str(link.get("name") or link.get("network") or "").lower()
+                    if name in ("website", "portfolio", "site", "blog"):
+                        url = _normalize_url(link.get("url") or link.get("link"))
+                        if url:
+                            return url
+    return _normalize_url(website) or ""
+
+
+def _collect_links(root: Dict[str, Any]) -> List[Dict[str, str]]:
+    links: List[Dict[str, str]] = []
+    for coll_key in ("links", "profiles", "social", "contact_links"):
+        coll = root.get(coll_key)
+        if isinstance(coll, list):
+            for link in coll:
+                if not isinstance(link, dict):
+                    continue
+                name = _first_non_empty(link.get("name"), link.get("network"))
+                url = _normalize_url(link.get("url") or link.get("link"))
+                if name and url:
+                    links.append({"name": name, "url": url})
+    # de-dupe by url
+    seen = set()
+    out: List[Dict[str, str]] = []
+    for l in links:
+        if l["url"] not in seen:
+            out.append(l)
+            seen.add(l["url"])
+    return out
+
+
+def _to_frontend_resume_data(parsed: Dict[str, Any]) -> Dict[str, Any]:
+    # Defaults per frontend schema
+    resume: Dict[str, Any] = {
+        "name": "",
+        "title": "",
+        "email": "",
+        "phone": "",
+        "location": "",
+        "website": "",
+        "summary": "",
+        "experiences": [],  # [{ company, role, bullets }]
+        "education": [],    # [{ school, degree }]
+        "skills": [],
+        "links": [],        # [{ name, url }]
+        "customSections": [],
+    }
+
+    if not isinstance(parsed, dict):
+        return resume
+
+    # Common roots
+    basics = parsed.get("basics") if isinstance(parsed.get("basics"), dict) else {}
+    contact = parsed.get("contact_information") if isinstance(parsed.get("contact_information"), dict) else {}
+
+    # Name / Title
+    resume["name"] = _first_non_empty(
+        contact.get("full_name"),
+        parsed.get("full_name"),
+        basics.get("name"),
+        parsed.get("name"),
+        default="",
+    )
+    resume["title"] = _first_non_empty(
+        parsed.get("title"),
+        basics.get("label"),
+        parsed.get("current_position"),
+        parsed.get("headline"),
+        default="",
+    )
+
+    # Contact
+    resume["email"] = _first_non_empty(
+        contact.get("email"), parsed.get("email"), basics.get("email"), default=""
+    )
+    resume["phone"] = _first_non_empty(
+        contact.get("phone"), parsed.get("phone"), parsed.get("phone_number"), basics.get("phone"), default=""
+    )
+    # Location can be object or string
+    loc = parsed.get("location") or basics.get("location") or contact.get("location")
+    if isinstance(loc, dict):
+        city = loc.get("city") or ""
+        region = loc.get("region") or loc.get("state") or ""
+        country = loc.get("country") or ""
+        resume["location"] = ", ".join([str(x) for x in [city, region, country] if x]).strip(", ")
+    else:
+        resume["location"] = _first_non_empty(parsed.get("location"), basics.get("location"), contact.get("location"))
+
+    resume["website"] = _pick_website(parsed or basics or contact)
+
+    # Summary
+    resume["summary"] = _first_non_empty(
+        parsed.get("professional_summary"),
+        parsed.get("summary"),
+        basics.get("summary"),
+        parsed.get("objective"),
+        default="",
+    )
+
+    # Experiences
+    exp_sources = [
+        parsed.get("experience"),
+        parsed.get("work_experience"),
+        parsed.get("work"),
+        parsed.get("positions"),
+    ]
+    experiences: List[Dict[str, Any]] = []
+    for src in exp_sources:
+        for item in _as_list(src):
+            if not isinstance(item, dict):
+                continue
+            company = _first_non_empty(item.get("company"), item.get("organization"))
+            role = _first_non_empty(item.get("role"), item.get("position"), item.get("title"))
+            bullets: List[str] = []
+            for key in ("bullets", "highlights", "responsibilities", "achievements"):
+                val = item.get(key)
+                if isinstance(val, list):
+                    bullets.extend([str(x).strip() for x in val if str(x).strip()])
+            desc = item.get("description") or item.get("summary")
+            if isinstance(desc, str) and desc.strip():
+                bullets.append(desc.strip())
+            if company or role or bullets:
+                experiences.append({
+                    "company": company,
+                    "role": role,
+                    "bullets": list(dict.fromkeys([b for b in bullets if b]))[:12],
+                })
+    resume["experiences"] = experiences
+
+    # Education
+    edu_src = parsed.get("education")
+    education: List[Dict[str, str]] = []
+    for item in _as_list(edu_src):
+        if not isinstance(item, dict):
+            continue
+        school = _first_non_empty(item.get("school"), item.get("institution"), item.get("university"), item.get("college"))
+        degree = _first_non_empty(item.get("degree"), item.get("qualification"), item.get("program"))
+        if school or degree:
+            education.append({"school": school, "degree": degree})
+    resume["education"] = education
+
+    # Skills
+    skills_raw = parsed.get("skills") or parsed.get("technical_skills") or parsed.get("core_skills")
+    resume["skills"] = _flatten_skills(skills_raw)
+
+    # Links
+    resume["links"] = _collect_links(parsed) or _collect_links(basics) or []
+
+    return resume
+
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint for monitoring and load balancers"""
@@ -282,10 +514,13 @@ async def parse_data(files: List[UploadFile] = File(...)) -> Dict[str, Any]:
         text = await _extract_text_for_file(upload)
         parsed = await _parse_text(text, llm)
         normalized = _ensure_resume_schema(parsed)
+        # Map to frontend schema for minimal/no frontend changes
+        resume_data = _to_frontend_resume_data(normalized)
         return {
             "filename": upload.filename,
             "text_length": len(text or ""),
             "parsed": normalized,
+            "resumeData": resume_data,
         }
 
     results = await asyncio.gather(*(handle(f) for f in files))
@@ -321,7 +556,10 @@ async def generate_resume(payload: GenerateResumePayload) -> Dict[str, Any]:
         except Exception:
             pass
 
-    return {"resume": merged}
+    # Also return frontend-shaped data for easy consumption
+    resume_data = _to_frontend_resume_data(merged)
+
+    return {"resume": merged, "resumeData": resume_data}
 
 
 @app.post("/auto-fix")

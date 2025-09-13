@@ -9,6 +9,9 @@ export type TemplateParams = {
   experiences: string;
   education: string;
   skillsList: string;
+  skillsTable: string;
+  skillsCommaSeparated: string;
+  certificatesTex: string;
   linksSection: string;
   customSectionsTex: string;
   educationShort: string;
@@ -16,7 +19,10 @@ export type TemplateParams = {
   sectionSpacingSmall: number;
   sectionSpacingMedium: number;
   pageSize: 'a4' | 'letter';
+  fontSize: '10pt' | '11pt' | '12pt';
   fontFamily: string;
   primaryColorRGB: { r: number; g: number; b: number };
   secondaryColorRGB: { r: number; g: number; b: number };
+  margin: number;
+  showIcons: boolean;
 };
