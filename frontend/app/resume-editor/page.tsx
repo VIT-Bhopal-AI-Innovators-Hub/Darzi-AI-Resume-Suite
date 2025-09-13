@@ -424,43 +424,348 @@ export default function ResumeEditor() {
             <div className="p-4 grid grid-cols-1 xl:grid-cols-2 gap-6">
               {/* LEFT SIDE - Form & Controls */}
               <div className="space-y-6">
-                {/* VIEW TABS */}
-                <ViewTabs
-                  activeTab={activeTab}
-                  autoRender={autoRender}
-                  loading={loading}
-                  onTabSwitch={handleTabSwitch}
-                  onAutoRenderChange={setAutoRender}
-                  onManualBuild={manualBuild}
-                />
+                <section className="bg-white/5 border border-white/10 rounded-xl p-5">
+                  <h2 className="font-bold mb-4 text-sm tracking-wide">
+                    BASIC INFO
+                  </h2>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-gray-400">Full Name</label>
+                      <input
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className="mt-1 w-full bg-black/40 border border-white/10 rounded-md px-3 py-2 text-sm outline-none focus:border-white/30"
+                        placeholder="John Doe"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400">Title</label>
+                      <input
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        className="mt-1 w-full bg-black/40 border border-white/10 rounded-md px-3 py-2 text-sm outline-none focus:border-white/30"
+                        placeholder="Frontend Engineer"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <label className="text-xs text-gray-400">
+                      Professional Summary
+                    </label>
+                    <textarea
+                      value={summary}
+                      onChange={(e) => setSummary(e.target.value)}
+                      rows={4}
+                      className="mt-1 w-full bg-black/40 border border-white/10 rounded-md px-3 py-2 text-sm resize-y outline-none focus:border-white/30"
+                      placeholder="2–3 line impactful summary..."
+                    />
+                  </div>
+                  <div className="mt-4">
+                    <label className="text-xs text-gray-400">
+                      Skills (comma separated)
+                    </label>
+                    <input
+                      value={skills}
+                      onChange={(e) => setSkills(e.target.value)}
+                      className="mt-1 w-full bg-black/40 border border-white/10 rounded-md px-3 py-2 text-sm outline-none focus:border-white/30"
+                      placeholder="React, TypeScript, Tailwind"
+                    />
+                  </div>
+                  {/* contact info grid */}
+                  <div className="mt-4 grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-gray-400">Email</label>
+                      <input
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        type="email"
+                        placeholder="john.doe@email.com"
+                        className="mt-1 w-full bg-black/40 border border-white/10 rounded-md px-3 py-2 text-sm outline-none focus:border-white/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400">Phone</label>
+                      <input
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="+91 1234 5678 90"
+                        className="mt-1 w-full bg-black/40 border border-white/10 rounded-md px-3 py-2 text-sm outline-none focus:border-white/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400">Location</label>
+                      <input
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
+                        placeholder="City, Country / Remote"
+                        className="mt-1 w-full bg-black/40 border border-white/10 rounded-md px-3 py-2 text-sm outline-none focus:border-white/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400">
+                        Website / Primary Link
+                      </label>
+                      <input
+                        value={website}
+                        onChange={(e) => setWebsite(e.target.value)}
+                        placeholder="https://linkedin.com/in/username"
+                        className="mt-1 w-full bg-black/40 border border-white/10 rounded-md px-3 py-2 text-sm outline-none focus:border-white/30"
+                      />
+                    </div>
+                  </div>
 
-                {/* LATEX SETTINGS */}
-                <LaTeXSettingsPanel
-                  settings={latexSettings}
-                  onSettingsChange={handleLatexSettingsChange}
-                />
+                  {/* additional links if user wants */}
+                  <div className="mt-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs text-gray-400">
+                        Additional Links
+                      </label>
+                      <button
+                        type="button"
+                        onClick={addLink}
+                        className="text-[11px] px-2 py-1 rounded bg-white text-black font-semibold hover:bg-gray-200"
+                      >
+                        + Add
+                      </button>
+                    </div>
+                    {links.length === 0 && (
+                      <p className="text-[11px] text-gray-500">
+                        (Optional) Add portfolio, GitHub, publications, etc.
+                      </p>
+                    )}
+                    <div className="space-y-2">
+                      {links.map((l) => (
+                        <div key={l.id} className="flex gap-2">
+                          <input
+                            value={l.label}
+                            onChange={(e) =>
+                              updateLink(l.id, { label: e.target.value })
+                            }
+                            placeholder="Label (e.g. GitHub)"
+                            className="flex-1 bg-black/40 border border-white/10 rounded-md px-2 py-1 text-xs outline-none focus:border-white/30"
+                          />
+                          <input
+                            value={l.url}
+                            onChange={(e) =>
+                              updateLink(l.id, { url: e.target.value })
+                            }
+                            placeholder="https://..."
+                            className="flex-[1.4] bg-black/40 border border-white/10 rounded-md px-2 py-1 text-xs outline-none focus:border-white/30"
+                          />
+                          <button
+                            onClick={() => removeLink(l.id)}
+                            className="text-gray-400 hover:text-red-400 text-xs px-2"
+                            title="Remove"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </section>
 
-                {/* CONDITIONAL CONTENT */}
-                {activeTab === "form" ? (
-                  <ResumeForm
-                    formData={formData}
-                    sections={sections}
-                    customSections={customSections}
-                    draggedSection={draggedSection}
-                    onFormDataChange={handleFormDataChange}
-                    onSectionsChange={setSections}
-                    onCustomSectionsChange={setCustomSections}
-                    onDragStart={handleDragStart}
-                    onDragOver={handleDragOver}
-                    onDrop={handleDrop}
-                    onDragEnd={handleDragEnd}
-                  />
-                ) : (
-                  <LaTeXEditor
-                    latexCode={latexCode}
-                    onCodeChange={setLatexCode}
-                  />
-                )}
+                {/* REPLACED EXPERIENCE WITH GENERIC SECTIONS */}
+                <section className="bg-white/5 border border-white/10 rounded-xl p-5 space-y-8">
+                  <div className="flex items-center justify-between">
+                    <h2 className="font-bold text-sm tracking-wide">
+                      SECTIONS
+                    </h2>
+                    <button
+                      onClick={addSection}
+                      className="text-xs flex items-center gap-1 bg-white text-black font-semibold px-3 py-1.5 rounded-md hover:bg-gray-200"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Add Section
+                    </button>
+                  </div>
+
+                  {sections.map((section) => (
+                    <div
+                      key={section.id}
+                      className="border border-white/10 rounded-lg p-4 space-y-4 bg-black/40"
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          value={section.name}
+                          onChange={(e) =>
+                            updateSection(section.id, { name: e.target.value })
+                          }
+                          placeholder="Section Name (e.g. Experience, Education, Projects)"
+                          className="flex-1 bg-black/30 border border-white/10 rounded px-3 py-1.5 text-sm outline-none focus:border-white/30 font-semibold"
+                        />
+                        {sections.length > 1 && (
+                          <button
+                            onClick={() => removeSection(section.id)}
+                            className="text-gray-400 hover:text-red-400"
+                            title="Remove section"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="space-y-6">
+                        {section.entries.map((entry) => (
+                          <div
+                            key={entry.id}
+                            className="bg-black/30 border border-white/10 rounded-md p-4 space-y-3"
+                          >
+                            <div className="flex gap-3">
+                              <input
+                                value={entry.position}
+                                onChange={(e) =>
+                                  updateEntry(section.id, entry.id, {
+                                    position: e.target.value,
+                                  })
+                                }
+                                placeholder="Title / Role"
+                                className="flex-1 bg-black/40 border border-white/10 rounded px-2 py-1 text-sm outline-none focus:border-white/30"
+                              />
+                              <input
+                                value={entry.organization}
+                                onChange={(e) =>
+                                  updateEntry(section.id, entry.id, {
+                                    organization: e.target.value,
+                                  })
+                                }
+                                placeholder="Organization"
+                                className="flex-1 bg-black/40 border border-white/10 rounded px-2 py-1 text-sm outline-none focus:border-white/30"
+                              />
+                            </div>
+                            <div className="flex gap-3 items-center">
+                              <input
+                                type="month"
+                                value={entry.start}
+                                onChange={(e) =>
+                                  updateEntry(section.id, entry.id, {
+                                    start: e.target.value,
+                                  })
+                                }
+                                className="bg-black/40 border border-white/10 rounded px-2 py-1 text-sm outline-none focus:border-white/30"
+                              />
+                              <input
+                                type="month"
+                                value={entry.end}
+                                onChange={(e) =>
+                                  updateEntry(section.id, entry.id, {
+                                    end: e.target.value,
+                                  })
+                                }
+                                className="bg-black/40 border border-white/10 rounded px-2 py-1 text-sm outline-none focus:border-white/30"
+                              />
+                              <button
+                                onClick={() =>
+                                  removeEntry(section.id, entry.id)
+                                }
+                                className="ml-auto text-gray-400 hover:text-red-400"
+                                title="Remove entry"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                            <div className="space-y-2">
+                              {entry.bullets.map((b, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-start gap-2"
+                                >
+                                  <textarea
+                                    value={b}
+                                    onChange={(e) =>
+                                      updateBullet(
+                                        section.id,
+                                        entry.id,
+                                        idx,
+                                        e.target.value
+                                      )
+                                    }
+                                    rows={1}
+                                    className="flex-1 bg-black/40 border border-white/10 rounded px-2 py-1 text-sm resize-y outline-none focus:border-white/30"
+                                    placeholder="Achievement / Detail..."
+                                  />
+                                  {entry.bullets.length > 1 && (
+                                    <button
+                                      onClick={() =>
+                                        removeBullet(section.id, entry.id, idx)
+                                      }
+                                      className="text-gray-500 hover:text-red-400"
+                                      title="Remove bullet"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                              <button
+                                onClick={() => addBullet(section.id, entry.id)}
+                                className="text-xs text-gray-300 hover:text-white"
+                              >
+                                + Add bullet
+                              </button>
+                            </div>
+
+                            {/* NEW LINK LABEL & URL INPUTS */}
+                            <div className="space-y-1">
+                              <label className="text-[10px] uppercase tracking-wide text-gray-400">
+                                Link
+                              </label>
+                              <div className="flex gap-3">
+                                <input
+                                  value={entry.linkLabel || ""}
+                                  onChange={(e) =>
+                                    updateEntry(section.id, entry.id, {
+                                      linkLabel: e.target.value,
+                                    })
+                                  }
+                                  placeholder="Link Label (e.g. Repo)"
+                                  className="flex-1 bg-black/40 border border-white/10 rounded px-2 py-1 text-xs outline-none focus:border-white/30"
+                                />
+                                <input
+                                  value={entry.linkUrl || ""}
+                                  onChange={(e) =>
+                                    updateEntry(section.id, entry.id, {
+                                      linkUrl: e.target.value,
+                                    })
+                                  }
+                                  placeholder="https://link"
+                                  className="flex-[1.4] bg-black/40 border border-white/10 rounded px-2 py-1 text-xs outline-none focus:border-white/30"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                        <button
+                          onClick={() => addEntry(section.id)}
+                          className="text-xs flex items-center gap-1 bg-white text-black font-semibold px-3 py-1.5 rounded-md hover:bg-gray-200"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Add Entry
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </section>
+
+                <section className="bg-white/5 border border-white/10 rounded-xl p-5">
+                  <h2 className="font-bold mb-4 text-sm tracking-wide flex items-center gap-2">
+                    <Bot className="h-4 w-4" /> AI SUGGESTIONS (Placeholder)
+                  </h2>
+                  <p className="text-xs text-gray-400">
+                    Maybe we can stream suggestions here? hook it up to our
+                    cloud model? placeholder for now, heres some examples
+                  </p>
+                  <div className="mt-3 text-sm space-y-2">
+                    <div className="p-3 rounded-md bg-black/40 border border-white/10">
+                      Add more quantified metrics in bullets.
+                    </div>
+                    <div className="p-3 rounded-md bg-black/40 border border-white/10">
+                      Tailor your skills to target role keywords for stronger
+                      ATS score.
+                    </div>
+                  </div>
+                </section>
               </div>
 
               {/* RIGHT SIDE - PDF Preview */}
