@@ -76,68 +76,16 @@ def _decode_text_bytes(b: bytes) -> str:
         return b.decode("latin-1", errors="replace")
 
 
-# async def _extract_text_for_file(upload: UploadFile) -> str:
-#     filename = upload.filename or "uploaded"
-#     suffix = filename.lower()
-#     content = await upload.read()
-
-#     # .txt locally only
-#     if suffix.endswith(".txt"):
-#         return _decode_text_bytes(content)
-
-#     # .docx via python-docx if available
-#     if suffix.endswith(".docx") and docx is not None:
-#         try:
-#             with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp:
-#                 tmp.write(content)
-#                 tmp.flush()
-#                 tmp_path = tmp.name
-#             try:
-#                 d = docx.Document(tmp_path)  # type: ignore
-#                 text = "\n".join(p.text for p in d.paragraphs)
-#                 if text.strip():
-#                     return text
-#             finally:
-#                 try:
-#                     os.remove(tmp_path)
-#                 except OSError:
-#                     pass
-#         except Exception:
-#             pass
-
-#     # PDFs/images/others: try Google Vision util first
-#     try:
-#         ext = Path(filename).suffix or ""
-#         with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
-#             tmp.write(content)
-#             tmp.flush()
-#             tmp_path = tmp.name
-#         try:
-#             text = vision_extract_text(tmp_path)
-#             if isinstance(text, dict):
-#                 text = text.get("text", "")
-#             if isinstance(text, str) and text.strip():
-#                 return text
-#         finally:
-#             try:
-#                 os.remove(tmp_path)
-#             except OSError:
-#                 pass
-#     except Exception:
-#         pass
-
-#     # Fallback: best-effort local decoding
-#     return _decode_text_bytes(content)
-
-
 async def _extract_text_for_file(upload: UploadFile) -> str:
     filename = upload.filename or "uploaded"
     suffix = filename.lower()
     content = await upload.read()
 
+    # .txt locally only
     if suffix.endswith(".txt"):
         return _decode_text_bytes(content)
 
+    # .docx via python-docx if available
     if suffix.endswith(".docx") and docx is not None:
         try:
             with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp:
@@ -145,7 +93,7 @@ async def _extract_text_for_file(upload: UploadFile) -> str:
                 tmp.flush()
                 tmp_path = tmp.name
             try:
-                d = docx.Document(tmp_path)
+                d = docx.Document(tmp_path)  # type: ignore
                 text = "\n".join(p.text for p in d.paragraphs)
                 if text.strip():
                     return text
@@ -157,150 +105,47 @@ async def _extract_text_for_file(upload: UploadFile) -> str:
         except Exception:
             pass
 
-    #PDFs - Using proper PDF text extraction instead of vision (bcoz it's not working)
-    if suffix.endswith(".pdf"):
-        extracted_text = ""
-        
-        #Trying PyPDF2
+    # PDFs/images/others: try Google Vision util first
+    try:
+        ext = Path(filename).suffix or ""
+        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+            tmp.write(content)
+            tmp.flush()
+            tmp_path = tmp.name
         try:
-            import PyPDF2
-            from io import BytesIO
-            
-            pdf_reader = PyPDF2.PdfReader(BytesIO(content))
-            text_parts = []
-            
-            for page_num, page in enumerate(pdf_reader.pages):
-                try:
-                    page_text = page.extract_text()
-                    if page_text and page_text.strip():
-                        text_parts.append(page_text)
-                        print(f"PyPDF2: Extracted {len(page_text)} chars from page {page_num + 1}")
-                except Exception as e:
-                    print(f"PyPDF2: Failed to extract page {page_num + 1}: {e}")
-            
-            extracted_text = "\n\n".join(text_parts)
-            
-            if extracted_text.strip() and len(extracted_text) > 100:
-                print(f"PyPDF2: Successfully extracted {len(extracted_text)} characters total")
-                # # Debug: Show sample of extracted text
-                # print("PyPDF2 SAMPLE:")
-                # print(repr(extracted_text[:500]))
-                return extracted_text
-            else:
-                print(f"PyPDF2: Extracted text too short ({len(extracted_text)} chars)")
-                
-        except Exception as e:
-            print(f"PyPDF2 extraction failed: {e}")
-
-        #Trying pdfplumber as fallback (M2)
-        try:
-            import pdfplumber
-            from io import BytesIO
-            
-            with pdfplumber.open(BytesIO(content)) as pdf:
-                text_parts = []
-                for page_num, page in enumerate(pdf.pages):
-                    try:
-                        page_text = page.extract_text()
-                        if page_text and page_text.strip():
-                            text_parts.append(page_text)
-                            # print(f"pdfplumber: Extracted {len(page_text)} chars from page {page_num + 1}")
-                    except Exception as e:
-                        print(f"pdfplumber: Failed to extract page {page_num + 1}: {e}")
-                
-                extracted_text = "\n\n".join(text_parts)
-                
-                if extracted_text.strip() and len(extracted_text) > 100:
-                    print(f"pdfplumber: Successfully extracted {len(extracted_text)} characters total")
-                    # print("pdfplumber SAMPLE:")
-                    # print(repr(extracted_text[:500]))             for debugging
-                    return extracted_text
-                else:
-                    print(f"pdfplumber: Extracted text too short ({len(extracted_text)} chars)")
-                    
-        except Exception as e:
-            print(f"pdfplumber extraction failed: {e}")
-
-        #Trying pymupdf (fitz) as last resort for PDFs (M3)
-        try:
-            import fitz  #PyMuPDF
-            from io import BytesIO
-            
-            doc = fitz.open(stream=content, filetype="pdf")
-            text_parts = []
-            
-            for page_num in range(doc.page_count):
-                try:
-                    page = doc[page_num]
-                    page_text = page.get_text()
-                    if page_text and page_text.strip():
-                        text_parts.append(page_text)
-                        print(f"PyMuPDF: Extracted {len(page_text)} chars from page {page_num + 1}")
-                except Exception as e:
-                    print(f"PyMuPDF: Failed to extract page {page_num + 1}: {e}")
-            
-            doc.close()
-            extracted_text = "\n\n".join(text_parts)
-            
-            if extracted_text.strip() and len(extracted_text) > 100:
-                print(f"PyMuPDF: Successfully extracted {len(extracted_text)} characters total")
-                # print("PyMuPDF SAMPLE:")
-                # print(repr(extracted_text[:500]))     for debugging hehe
-                return extracted_text
-            else:
-                print(f"PyMuPDF: Extracted text too short ({len(extracted_text)} chars)")
-                
-        except Exception as e:
-            print(f"PyMuPDF extraction failed: {e}")
-
-    #Images/others: try Google Vision (only for images, not PDFs) 
-    if not suffix.endswith(".pdf"):  #will not use vision for PDFs anymore
-        try:
-            ext = Path(filename).suffix or ""
-            with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
-                tmp.write(content)
-                tmp.flush()
-                tmp_path = tmp.name
+            text = vision_extract_text(tmp_path)
+            if isinstance(text, dict):
+                text = text.get("text", "")
+            if isinstance(text, str) and text.strip():
+                return text
+        finally:
             try:
-                text = vision_extract_text(tmp_path)
-                if isinstance(text, dict):
-                    text = text.get("text", "")
-                if isinstance(text, str) and text.strip():
-                    return text
-            finally:
-                try:
-                    os.remove(tmp_path)
-                except OSError:
-                    pass
-        except Exception:
-            pass
+                os.remove(tmp_path)
+            except OSError:
+                pass
+    except Exception:
+        pass
 
-    #Fallback: basic text decoding (shouldn't be reached for PDFs) 
+    # Fallback: best-effort local decoding
     return _decode_text_bytes(content)
-
-
-
-
 
 async def _parse_text(text: str, llm: Optional[LLMManager]) -> Dict[str, Any]:
     """Use LLM to structure the raw text into proper JSON format"""
     if not text or not text.strip():
         return {"error": "Empty text provided"}
-    # print("="*50)
-    # print("EXTRACTED TEXT SAMPLE:")
-    # print("First 1000 characters:")           debugging purppose
-    # print(repr(text[:1000]))
-    # print("\nLast 1000 characters:")  
-    # print(repr(text[-1000:]))
-    # print("="*50)
     
     try:
+        # Try to get LLM instance if not provided
+        if not llm:
+            llm = _get_llm()
+        
+        # Use LLM to structure the data
         if llm:
             structured_data = await _llm_structure_resume(text, llm)
-            print(f"LLM returned: {structured_data}")
             if structured_data:
                 return structured_data
-        
+            
+        # Last resort: return basic structure with raw text
         return _create_basic_structure(text)
         
     except Exception as e:
@@ -311,19 +156,9 @@ async def _llm_structure_resume(text: str, llm: LLMManager) -> Optional[Dict[str
     """Use LLM to structure resume text into JSON"""
     
     try:
-
-        # print(f"=== SENDING TO GEMINI ===")
-        # print(f"Text length: {len(text)}")
-        # print(f"First 200 chars: {repr(text[:200])}")
-
-        #Use the LLM manager's built-in parsing method
+        # Use the LLM manager's built-in parsing method
         structured_data = llm.parse_resume_with_llm(text)
         
-        # print(f"=== GEMINI RESPONSE ===")
-        # print(f"Response type: {type(structured_data)}")
-        # print(f"Response keys: {list(structured_data.keys()) if isinstance(structured_data, dict) else 'Not a dict'}")
-        # print(f"Full response: {structured_data}")
-
         # Validate the structure has required fields
         if isinstance(structured_data, dict) and len(structured_data) > 0:
             return structured_data
@@ -454,15 +289,7 @@ async def parse_data(files: List[UploadFile] = File(...)) -> Dict[str, Any]:
         }
 
     results = await asyncio.gather(*(handle(f) for f in files))
-
-    if len(files) == 1:
-        return results[0]["parsed"]
-    
-
-    return {
-        Path(files[i].filename or f"file_{i}").stem: results[i]["parsed"]
-        for i in range(len(results))
-    }
+    return {Path(r.get("filename") or "").stem: r for r in results}
 
 
 @app.post("/generate-resume")
