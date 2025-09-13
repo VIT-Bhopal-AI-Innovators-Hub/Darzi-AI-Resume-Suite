@@ -5,11 +5,12 @@ import tempfile
 from pathlib import Path
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+import sys
 
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, File, HTTPException, UploadFile
-from fastapi.responses import RedirectResponse
+from fastapi import FastAPI, File, HTTPException, UploadFile, Form
+from fastapi.responses import RedirectResponse, JSONResponse
 
 try:
     import docx
@@ -29,6 +30,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+try:
+    from ats.ats import (
+        clean_text,
+        extract_text_from_resume_pdf,
+        calculate_comprehensive_resume_score,
+        buzzwords
+    )
+    from ats.matchjd import (
+        get_resume_jd_match_score,
+        tfidf_vectorizer
+    )
+    print("successfully imported from existing ats files")
+except ImportError as e:
+    print(f"could not import ats files: {e}")
+
+
+
 class GenerateResumePayload(BaseModel):
     data: Dict[str, Any]
     preferred_provider: Optional[str] = None
@@ -38,6 +56,219 @@ class AutoFixPayload(BaseModel):
     context: Dict[str, Any]
     constraints: Optional[Dict[str, Any]] = None
     preferred_provider: Optional[str] = None
+
+
+class ATSCheckerPayload(BaseModel):
+    job_description: Optional[str] = None
+
+class ATSAnalyzer:
+    def __init__(self):
+        self.esco_zip_path = 'backend/ats/data/ESCO dataset - v1.2.0 - classification - en - csv.zip'
+        self.vectorizer_path = 'backend/ats/data/ats_tfidf_vectorizer/tfidf_vectorizer.pkl'
+        self.tfidf_vectorizer = None
+        self.buzzwords = buzzwords if 'buzzwords' in globals() else self._get_default_buzzwords()
+        self._load_vectorizer()
+
+    
+    def _load_vectorizer(self):     #for loading tf-idf vectorizer from existing file (have to add later)
+        try:
+            import joblib
+            self.tfidf_vectorizer = joblib.load(self.vectorizer_path)
+            print(f"Successfully loaded TF-IDF vectorizer from {self.vectorizer_path}")
+        except Exception as e:
+            print(f"Could not load TF-IDF vectorizer: {e}")
+
+    def _get_default_buzzwords(self):       #fallback buzzwords (not needed ig but still)
+        return [
+            "machine learning", "deep learning", "artificial intelligence", "data science",
+            "big data", "cloud computing", "aws", "azure", "gcp", "devops", "agile", "scrum",
+            "python", "r", "sql", "nosql", "docker", "kubernetes", "ci/cd", "nlp",
+            "computer vision", "predictive modeling", "statistical analysis", "data mining"
+        ]
+    
+    def analyze_buzzwords_from_text(self, resume_text):     #existing approach
+        resume_text_lower = str(resume_text).lower()
+        buzzword_count = 0
+        found_buzzwords = []
+        
+        for buzzword in self.buzzwords:
+            if buzzword in resume_text_lower:
+                buzzword_count += 1
+                found_buzzwords.append(buzzword)
+        
+        return {
+            "count": buzzword_count,
+            "percentage": min(100, (buzzword_count / 30) * 100),
+            "found_terms": found_buzzwords
+        }
+    
+    def analyze_quantifiable_from_text(self, resume_text):
+        import re
+        
+        refined_quantifiable_patterns = [
+            r'(?:increased|reduced|improved|decreased|boosted|cut|grew)\s+.*?by\s+([\d,\.]+\s*%?)',
+            r'(?:managed|led|oversaw)\s+(?:a\s+team\s+of|[\d,\.]+\s+projects?)',
+            r'(?:saved)\s+([\$\€\£]?[\d,\.]+)',
+            r'(?:achieved|delivered)\s+(?:a\s+)?([\d,\.]+%?)\s+.*?',
+            r'(?:handled|processed)\s+([\d,\.]+)\s+(?:data\s+records?|transactions?)',
+            r'(?:developed|implemented)\s+.*?for\s+([\d,\.]+)\s+users?',
+            r'(?:optimized|streamlined)\s+.*?resulting\s+in\s+([\d,\.]+%?)\s+reduction',
+            r'([\d,\.]+%?)\s+(?:increase|reduction|improvement|gain|growth)',
+        ]
+        
+        quantifiable_achievements = []
+        resume_text_lower = str(resume_text).lower()
+        
+        for pattern in refined_quantifiable_patterns:
+            matches = re.findall(pattern, resume_text_lower)
+            if matches:
+                for match in matches:
+                    if isinstance(match, tuple):
+                        quantifiable_achievements.extend([item for item in match if item])
+                    else:
+                        quantifiable_achievements.append(match)
+        
+        count = len(quantifiable_achievements)
+        return {
+            "count": count,
+            "percentage": min(100, (count / 8) * 100),
+            "achievements": quantifiable_achievements
+        }
+    
+    def analyze_esco_technical_terms(self, resume_text):        #from ats.py (existing esco analysis)
+        import zipfile
+        import pandas as pd
+        import spacy
+        from spacy.matcher import PhraseMatcher
+        
+        unique_technical_terms_count = 0
+        found_terms = []
+        
+        try:
+            if os.path.exists(self.esco_zip_path):
+                with zipfile.ZipFile(self.esco_zip_path, 'r') as zip_ref:
+                    if 'skills_en.csv' in zip_ref.namelist():
+                        zip_ref.extract('skills_en.csv', path='/tmp/')
+                        
+                        esco_skills_df = pd.read_csv('/tmp/skills_en.csv')
+                        
+                        os.remove('/tmp/skills_en.csv')
+                        
+                        required_cols = ['preferredLabel', 'altLabels', 'description']
+                        if all(col in esco_skills_df.columns for col in required_cols):
+                            esco_terms = []
+                            for index, row in esco_skills_df.iterrows():
+                                if pd.notna(row['preferredLabel']) and isinstance(row['preferredLabel'], str):
+                                    esco_terms.append(row['preferredLabel'])
+                                if pd.notna(row['altLabels']) and isinstance(row['altLabels'], str):
+                                    alt_labels = [label.strip() for label in row['altLabels'].split(',') if label.strip()]
+                                    esco_terms.extend(alt_labels)
+                        
+                            nlp_esco_matcher = spacy.blank("en")
+                            esco_matcher = PhraseMatcher(nlp_esco_matcher.vocab)
+                            
+                            cleaned_esco_terms = [clean_text(term) for term in esco_terms if term]
+                            cleaned_esco_terms = [term for term in cleaned_esco_terms if term]
+                            
+                            if cleaned_esco_terms:
+                                esco_patterns = [nlp_esco_matcher.make_doc(term) for term in cleaned_esco_terms[:1000]]  #umm limiting for performance
+                                esco_matcher.add("TECHNICAL_TERMS", esco_patterns)
+                                
+                                cleaned_resume_text = clean_text(resume_text)
+                                if cleaned_resume_text:
+                                    resume_doc = nlp_esco_matcher(cleaned_resume_text)
+                                    esco_matches = esco_matcher(resume_doc)
+                                    found_terms = [resume_doc[start:end].text for match_id, start, end in esco_matches]
+                                    unique_technical_terms_count = len(set(found_terms))
+                        
+        except Exception as e:      #vibecoded exception logic :>
+            print(f"ESCO analysis failed: {e}")
+            # Fallback to basic technical terms
+            basic_terms = ["python", "java", "javascript", "sql", "aws", "docker", "react"]
+            text_lower = resume_text.lower()
+            found_terms = [term for term in basic_terms if term in text_lower]
+            unique_technical_terms_count = len(found_terms)
+        
+        return {
+            "count": unique_technical_terms_count,
+            "percentage": min(100, (unique_technical_terms_count / 15) * 100),
+            "terms": found_terms[:20]  # Limit for response size
+        }
+    
+    def analyze_structure_from_text(self, resume_text):
+        import re
+        
+        section_titles = [
+            "summary", "objective", "education", "experience", "work experience",
+            "professional experience", "skills", "technical skills", "projects",
+            "portfolio", "awards", "honors", "publications", "presentations",
+            "licenses", "certifications", "volunteering", "interests", "contact",
+            "contact information"
+        ]
+        
+        resume_text_lower = str(resume_text).lower()
+        identified_sections = []
+        
+        for title in section_titles:
+            if re.search(r'\b' + re.escape(title) + r'\b', resume_text_lower):
+                identified_sections.append(title)
+        
+        count = len(identified_sections)
+        return {
+            "count": count,
+            "percentage": min(100, (count / 8) * 100),
+            "sections": identified_sections
+        }
+    
+    def analyze_repetition_from_text(self, resume_text):
+        import re
+        from collections import Counter
+
+        try:
+            from nltk.corpus import stopwords
+            stop_words = set(stopwords.words('english'))
+        except:     #basic fallback
+            stop_words = set(['the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'a', 'an', 'is', 'are', 'was', 'were'])
+        
+        words = re.findall(r'\b\w+\b', str(resume_text).lower())
+        word_counts = Counter(words)
+        
+        ignore_words = stop_words | {'com', 'https', 'www', 'project', 'skill', 
+                                   'experience', 'develop', 'system'}
+        
+        high_frequency_words = [word for word, count in word_counts.most_common(50) 
+                              if count > 10 and word not in ignore_words]
+        
+        repetition_penalty = len(high_frequency_words) * 5
+        score = max(0, 100 - repetition_penalty)
+        
+        return {
+            "score": score,
+            "percentage": score,
+            "repetitive_words": high_frequency_words
+        }
+    
+    def calculate_jd_match_score(self, resume_text, jd_text):       
+        if not self.tfidf_vectorizer or not jd_text:
+            return {"score": 0, "percentage": 0, "available": False}
+        
+        try:
+            if 'get_resume_jd_match_score' in globals():
+                similarity = get_resume_jd_match_score(resume_text, jd_text, self.tfidf_vectorizer)
+                if similarity is not None:
+                    return {
+                        "score": similarity,
+                        "percentage": similarity * 100,
+                        "available": True
+                    }
+            return {"score": 0, "percentage": 0, "available": False}
+            
+        except Exception as e:
+            print(f"JD matching error: {e}")
+            return {"score": 0, "percentage": 0, "available": False}
+
+ats_analyzer = ATSAnalyzer()        
+
 
 
 @app.get("/")
@@ -76,60 +307,6 @@ def _decode_text_bytes(b: bytes) -> str:
         return b.decode("latin-1", errors="replace")
 
 
-# async def _extract_text_for_file(upload: UploadFile) -> str:
-#     filename = upload.filename or "uploaded"
-#     suffix = filename.lower()
-#     content = await upload.read()
-
-#     # .txt locally only
-#     if suffix.endswith(".txt"):
-#         return _decode_text_bytes(content)
-
-#     # .docx via python-docx if available
-#     if suffix.endswith(".docx") and docx is not None:
-#         try:
-#             with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp:
-#                 tmp.write(content)
-#                 tmp.flush()
-#                 tmp_path = tmp.name
-#             try:
-#                 d = docx.Document(tmp_path)  # type: ignore
-#                 text = "\n".join(p.text for p in d.paragraphs)
-#                 if text.strip():
-#                     return text
-#             finally:
-#                 try:
-#                     os.remove(tmp_path)
-#                 except OSError:
-#                     pass
-#         except Exception:
-#             pass
-
-#     # PDFs/images/others: try Google Vision util first
-#     try:
-#         ext = Path(filename).suffix or ""
-#         with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
-#             tmp.write(content)
-#             tmp.flush()
-#             tmp_path = tmp.name
-#         try:
-#             text = vision_extract_text(tmp_path)
-#             if isinstance(text, dict):
-#                 text = text.get("text", "")
-#             if isinstance(text, str) and text.strip():
-#                 return text
-#         finally:
-#             try:
-#                 os.remove(tmp_path)
-#             except OSError:
-#                 pass
-#     except Exception:
-#         pass
-
-#     # Fallback: best-effort local decoding
-#     return _decode_text_bytes(content)
-
-
 async def _extract_text_for_file(upload: UploadFile) -> str:
     filename = upload.filename or "uploaded"
     suffix = filename.lower()
@@ -157,11 +334,11 @@ async def _extract_text_for_file(upload: UploadFile) -> str:
         except Exception:
             pass
 
-    #PDFs - Using proper PDF text extraction instead of vision (bcoz it's not working)
+    # PDFs - Using proper PDF text extraction instead of vision (bcoz it's not working)
     if suffix.endswith(".pdf"):
         extracted_text = ""
         
-        #Trying PyPDF2
+        # Trying PyPDF2
         try:
             import PyPDF2
             from io import BytesIO
@@ -182,9 +359,6 @@ async def _extract_text_for_file(upload: UploadFile) -> str:
             
             if extracted_text.strip() and len(extracted_text) > 100:
                 print(f"PyPDF2: Successfully extracted {len(extracted_text)} characters total")
-                # # Debug: Show sample of extracted text
-                # print("PyPDF2 SAMPLE:")
-                # print(repr(extracted_text[:500]))
                 return extracted_text
             else:
                 print(f"PyPDF2: Extracted text too short ({len(extracted_text)} chars)")
@@ -192,7 +366,7 @@ async def _extract_text_for_file(upload: UploadFile) -> str:
         except Exception as e:
             print(f"PyPDF2 extraction failed: {e}")
 
-        #Trying pdfplumber as fallback (M2)
+        # Trying pdfplumber as fallback (M2)
         try:
             import pdfplumber
             from io import BytesIO
@@ -204,7 +378,6 @@ async def _extract_text_for_file(upload: UploadFile) -> str:
                         page_text = page.extract_text()
                         if page_text and page_text.strip():
                             text_parts.append(page_text)
-                            # print(f"pdfplumber: Extracted {len(page_text)} chars from page {page_num + 1}")
                     except Exception as e:
                         print(f"pdfplumber: Failed to extract page {page_num + 1}: {e}")
                 
@@ -212,8 +385,6 @@ async def _extract_text_for_file(upload: UploadFile) -> str:
                 
                 if extracted_text.strip() and len(extracted_text) > 100:
                     print(f"pdfplumber: Successfully extracted {len(extracted_text)} characters total")
-                    # print("pdfplumber SAMPLE:")
-                    # print(repr(extracted_text[:500]))             for debugging
                     return extracted_text
                 else:
                     print(f"pdfplumber: Extracted text too short ({len(extracted_text)} chars)")
@@ -221,9 +392,9 @@ async def _extract_text_for_file(upload: UploadFile) -> str:
         except Exception as e:
             print(f"pdfplumber extraction failed: {e}")
 
-        #Trying pymupdf (fitz) as last resort for PDFs (M3)
+        # Trying pymupdf (fitz) as last resort for PDFs (M3)
         try:
-            import fitz  #PyMuPDF
+            import fitz  # PyMuPDF
             from io import BytesIO
             
             doc = fitz.open(stream=content, filetype="pdf")
@@ -244,8 +415,6 @@ async def _extract_text_for_file(upload: UploadFile) -> str:
             
             if extracted_text.strip() and len(extracted_text) > 100:
                 print(f"PyMuPDF: Successfully extracted {len(extracted_text)} characters total")
-                # print("PyMuPDF SAMPLE:")
-                # print(repr(extracted_text[:500]))     for debugging hehe
                 return extracted_text
             else:
                 print(f"PyMuPDF: Extracted text too short ({len(extracted_text)} chars)")
@@ -253,8 +422,8 @@ async def _extract_text_for_file(upload: UploadFile) -> str:
         except Exception as e:
             print(f"PyMuPDF extraction failed: {e}")
 
-    #Images/others: try Google Vision (only for images, not PDFs) 
-    if not suffix.endswith(".pdf"):  #will not use vision for PDFs anymore
+    # Images/others: try Google Vision (only for images, not PDFs) 
+    if not suffix.endswith(".pdf"):  # will not use vision for PDFs anymore
         try:
             ext = Path(filename).suffix or ""
             with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
@@ -275,24 +444,14 @@ async def _extract_text_for_file(upload: UploadFile) -> str:
         except Exception:
             pass
 
-    #Fallback: basic text decoding (shouldn't be reached for PDFs) 
+    # Fallback: basic text decoding (shouldn't be reached for PDFs) 
     return _decode_text_bytes(content)
-
-
-
 
 
 async def _parse_text(text: str, llm: Optional[LLMManager]) -> Dict[str, Any]:
     """Use LLM to structure the raw text into proper JSON format"""
     if not text or not text.strip():
         return {"error": "Empty text provided"}
-    # print("="*50)
-    # print("EXTRACTED TEXT SAMPLE:")
-    # print("First 1000 characters:")           debugging purppose
-    # print(repr(text[:1000]))
-    # print("\nLast 1000 characters:")  
-    # print(repr(text[-1000:]))
-    # print("="*50)
     
     try:
         if llm:
@@ -311,19 +470,9 @@ async def _llm_structure_resume(text: str, llm: LLMManager) -> Optional[Dict[str
     """Use LLM to structure resume text into JSON"""
     
     try:
-
-        # print(f"=== SENDING TO GEMINI ===")
-        # print(f"Text length: {len(text)}")
-        # print(f"First 200 chars: {repr(text[:200])}")
-
-        #Use the LLM manager's built-in parsing method
+        # Use the LLM manager's built-in parsing method
         structured_data = llm.parse_resume_with_llm(text)
         
-        # print(f"=== GEMINI RESPONSE ===")
-        # print(f"Response type: {type(structured_data)}")
-        # print(f"Response keys: {list(structured_data.keys()) if isinstance(structured_data, dict) else 'Not a dict'}")
-        # print(f"Full response: {structured_data}")
-
         # Validate the structure has required fields
         if isinstance(structured_data, dict) and len(structured_data) > 0:
             return structured_data
@@ -458,7 +607,6 @@ async def parse_data(files: List[UploadFile] = File(...)) -> Dict[str, Any]:
     if len(files) == 1:
         return results[0]["parsed"]
     
-
     return {
         Path(files[i].filename or f"file_{i}").stem: results[i]["parsed"]
         for i in range(len(results))
@@ -528,3 +676,165 @@ async def auto_fix(payload: AutoFixPayload) -> Dict[str, Any]:
         return {"field": field, "suggestion": cleaned}
 
     return {"field": field, "suggestion": ""}
+
+
+@app.post("/ats-checker")
+async def ats_checker(
+    file: UploadFile = File(...),
+    job_description: str = Form("")
+) -> Dict[str, Any]:    
+
+    if not file:
+        raise HTTPException(status_code=400, detail="No resume file uploaded")
+    
+    if not file.filename or not file.filename.lower().endswith(('.pdf', '.docx', '.txt')):
+        raise HTTPException(status_code=400, detail="Only pdf, docx, txt files are supported")
+
+    try:
+        resume_text = await _extract_text_for_file(file)
+
+        if not resume_text or len(resume_text.strip()) < 100:
+            raise HTTPException(status_code=400, detail="Could not extract meaningful text from resume") 
+
+        if not job_description:
+            job_description = """
+            We are seeking a skilled professional with strong technical expertise and proven experience. 
+            Candidates should demonstrate quantifiable achievements, relevant industry experience, 
+            and excellent communication skills. Experience with modern technologies and methodologies preferred.
+            Strong analytical and problem-solving abilities required.
+            """
+        
+        print(f"Analyzing resume with {len(resume_text)} characters")
+        
+        analyses = {}
+        
+        #Buzzwords Analysis (from ats.py)   
+        analyses["buzzwords"] = ats_analyzer.analyze_buzzwords_from_text(resume_text)
+        print(f"Buzzwords: {analyses['buzzwords']['count']} found")
+        
+        #Quantifiable Achievements (from ats.py)
+        analyses["quantifiable"] = ats_analyzer.analyze_quantifiable_from_text(resume_text)
+        print(f"Quantifiable achievements: {analyses['quantifiable']['count']} found")
+        
+        #Resume Structure (from ats.py)
+        analyses["structure"] = ats_analyzer.analyze_structure_from_text(resume_text)
+        print(f"Structure sections: {analyses['structure']['count']} found")
+        
+        #Repetition Analysis (from ats.py)
+        analyses["repetition"] = ats_analyzer.analyze_repetition_from_text(resume_text)
+        print(f"Repetition score: {analyses['repetition']['score']}")
+        
+        #Technical Terms (from ats.py ESCO analysis)
+        analyses["technical"] = ats_analyzer.analyze_esco_technical_terms(resume_text)
+        print(f"Technical terms: {analyses['technical']['count']} found")
+        
+        #JD Matching (from matchjd.py)
+        jd_match = ats_analyzer.calculate_jd_match_score(resume_text, job_description)
+        if jd_match["available"]:
+            analyses["jd_match"] = jd_match
+            print(f"JD Match: {jd_match['percentage']:.1f}%")
+
+
+        #using weights and calculation from your ats.py
+        buzzword_points = analyses["buzzwords"]["count"] * 0.5
+        quantifiable_points = analyses["quantifiable"]["count"] * 10
+        technical_points = analyses["technical"]["count"] * 2
+        structure_points = analyses["structure"]["count"] * 5
+        repetition_penalty = max(0, 100 - analyses["repetition"]["score"])
+        
+        overall_score = max(0, min(100, 
+            buzzword_points + quantifiable_points + technical_points + 
+            structure_points - repetition_penalty
+        ))
+        
+        graph_data = {
+            "overall_score": round(overall_score, 1),
+            "categories": {
+                "Industry Keywords": {
+                    "score": round(analyses["buzzwords"]["percentage"], 1),
+                    "count": analyses["buzzwords"]["count"],
+                    "details": f"Found {analyses['buzzwords']['count']} relevant industry keywords",
+                    "suggestions": "Include more industry-specific terms and technologies" if analyses["buzzwords"]["percentage"] < 60 else "Strong keyword coverage",
+                    "found_items": analyses["buzzwords"]["found_terms"][:10]  # Top 10 for display
+                },
+                "Quantifiable Impact": {
+                    "score": round(analyses["quantifiable"]["percentage"], 1),
+                    "count": analyses["quantifiable"]["count"],
+                    "details": f"Found {analyses['quantifiable']['count']} quantifiable achievements with metrics",
+                    "suggestions": "Add more specific numbers, percentages, and measurable outcomes" if analyses["quantifiable"]["percentage"] < 50 else "Excellent use of quantifiable metrics",
+                    "found_items": analyses["quantifiable"]["achievements"][:5]
+                },
+                "Resume Structure": {
+                    "score": round(analyses["structure"]["percentage"], 1),
+                    "count": analyses["structure"]["count"],
+                    "details": f"Identified {analyses['structure']['count']} standard resume sections",
+                    "suggestions": "Consider adding missing standard sections" if analyses["structure"]["percentage"] < 70 else "Well-organized resume structure",
+                    "found_items": analyses["structure"]["sections"]
+                },
+                "Content Quality": {
+                    "score": round(analyses["repetition"]["percentage"], 1),
+                    "details": "Analysis of word repetition and content diversity",
+                    "suggestions": "Vary your language and avoid repetitive phrases" if analyses["repetition"]["percentage"] < 80 else "Good content diversity and language variation",
+                    "issues": analyses["repetition"]["repetitive_words"][:5]
+                },
+                "Technical Expertise": {
+                    "score": round(analyses["technical"]["percentage"], 1),
+                    "count": analyses["technical"]["count"],
+                    "details": f"Found {analyses['technical']['count']} technical skills and expertise terms",
+                    "suggestions": "Include more specific technical skills relevant to your field" if analyses["technical"]["percentage"] < 60 else "Strong technical skills representation",
+                    "found_items": analyses["technical"]["terms"][:15]
+                }
+            },
+            "recommendations": [],
+            "metadata": {
+                "filename": file.filename,
+                "text_length": len(resume_text),
+                "analysis_timestamp": datetime.utcnow().isoformat(),
+                "jd_matching_available": jd_match["available"],
+                "datasets_used": {
+                    "esco_available": os.path.exists(ats_analyzer.esco_zip_path),
+                    "tfidf_available": ats_analyzer.tfidf_vectorizer is not None
+                }
+            }
+        }
+        
+        #will add jd match if available
+        if jd_match["available"]:
+            graph_data["categories"]["Job Relevance"] = {
+                "score": round(jd_match["percentage"], 1),
+                "details": f"Resume-job description similarity: {jd_match['percentage']:.1f}%",
+                "suggestions": "Tailor resume content more closely to job requirements" if jd_match["percentage"] < 60 else "Strong alignment with job requirements"
+            }
+        
+        #for generating prioritized recommendations
+        for category, data in graph_data["categories"].items():
+            if data["score"] < 60:
+                priority = "high" if data["score"] < 40 else "medium"
+                graph_data["recommendations"].append({
+                    "category": category,
+                    "priority": priority,
+                    "suggestion": data["suggestions"],
+                    "current_score": data["score"]
+                })
+        
+        #sortin recommendations by priority and score
+        graph_data["recommendations"].sort(key=lambda x: (x["priority"] == "high", -x["current_score"]), reverse=True)
+        
+        #Overall assessment (might change later)
+        if overall_score >= 80:
+            graph_data["overall_assessment"] = "Excellent ATS compatibility - ready for application"
+        elif overall_score >= 60:
+            graph_data["overall_assessment"] = "Good ATS compatibility with some areas for improvement"
+        elif overall_score >= 40:
+            graph_data["overall_assessment"] = "Moderate ATS compatibility - several improvements needed"
+        else:
+            graph_data["overall_assessment"] = "Low ATS compatibility - significant improvements required"
+        
+        print(f"Analysis complete. Overall score: {overall_score}")
+        return graph_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"ATS analysis error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error analyzing resume: {str(e)}")
