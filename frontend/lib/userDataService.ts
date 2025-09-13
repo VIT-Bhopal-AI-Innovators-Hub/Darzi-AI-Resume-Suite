@@ -1,5 +1,7 @@
 import { ResumeData } from "@/types/resume";
 
+const BACKEND_API_BASE = process.env.NEXT_PUBLIC_BACKEND_API_BASE || "http://localhost:8000";
+
 // Sample user data for testing - this would normally come from your backend
 const sampleUserData: ResumeData = {
   name: "John Doe",
@@ -92,26 +94,120 @@ const sampleUserData: ResumeData = {
   ]
 };
 
-// Simulate API call delay
+
+{
+  const s = sampleUserData as unknown as Record<string, unknown>;
+  s.roll = "2001CS101";
+  s.course = "B.Tech in Computer Science and Engineering";
+  s.emaila = s.email; 
+  s.emailb = "john.personal@example.com"; 
+  s.github = "johndoe";
+  s.linkedin = "john-doe";
+
+  s.educationDetailed = [
+    { degree: (sampleUserData.education[0].degree), institute: (sampleUserData.education[0].school), score: "3.8/4.0", year: "2018" },
+    { degree: (sampleUserData.education[1].degree), institute: (sampleUserData.education[1].school), score: "3.9/4.0", year: "2020" }
+  ];
+  s.experience = [
+    {
+      company: s.experiences[0].company,
+      location: s.location,
+      role: s.experiences[0].role,
+      dates: "2018 - Present",
+      work: s.experiences[0].bullets
+    }
+  ];
+
+  s.projects = [
+    {
+      name: "Realtime Insights Dashboard",
+      role: "Lead Developer",
+      date: "2022",
+      work: ["Built streaming pipeline", "Implemented dashboard UI"],
+      description: "Streaming analytics dashboard used by enterprise customers."
+    }
+  ];
+
+  s.skillsCategorized = [
+    { category: "Languages", tools: "TypeScript, JavaScript, Python" },
+    { category: "Frameworks", tools: "React, Node.js" },
+    { category: "DevOps", tools: "Docker, Terraform, AWS" }
+  ];
+
+  s.courses = [{ year: "2023", list: "Machine Learning, Cloud Computing" }];
+  s.certifications = ["AWS Certified Solutions Architect – Associate (2022)"];
+  s.positions = [{ position: "Team Lead", organization: "Nimbus Analytics", date: "2021 - 2023" }];
+  s.activities = [{ name: "Volunteer Tutor", description: "Taught data structures and algorithms to freshmen." }];
+}
+
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export class UserDataService {
+ 
   /**
-   * Fetch user data from API endpoint
-   * In a real application, this would make an HTTP request to your backend
+   * Parse one or more resume files using backend `/parse-data` and return the first resumeData.
+   * For multi-file uploads, prefer `parseAndMerge` which calls `/generate-resume` for a merged output.
    */
+  static async parseFiles(files: FileList | File[]): Promise<ResumeData> {
+    const form = new FormData();
+    const list = Array.from(files as unknown as Iterable<File>);
+    list.forEach((f) => form.append("files", f));
+    const res = await fetch(`${BACKEND_API_BASE}/parse-data`, { method: "POST", body: form });
+    if (!res.ok) throw new Error(`Parse failed (${res.status})`);
+    type BackendParsedItem = { parsed?: unknown; resumeData?: ResumeData; filename?: string; text_length?: number; [k: string]: unknown };
+    type BackendParsedMap = Record<string, BackendParsedItem>;
+    const body: BackendParsedMap = await res.json();
+    const firstKey = Object.keys(body)[0];
+    const first = body[firstKey];
+    const rd = first?.resumeData;
+    if (rd && this.validateResumeData(rd)) return rd;
+    return this.getEmptyResumeData();
+  }
+
+  /**
+   * Parse files and then request backend to merge the parsed content into a single resume using `/generate-resume`.
+   * Returns `ResumeData` mapped to the frontend schema.
+   */
+  static async parseAndMerge(files: FileList | File[]): Promise<ResumeData> {
+    const form = new FormData();
+    const list = Array.from(files as unknown as Iterable<File>);
+    list.forEach((f) => form.append("files", f));
+    const res = await fetch(`${BACKEND_API_BASE}/parse-data`, { method: "POST", body: form });
+    if (!res.ok) throw new Error(`Parse failed (${res.status})`);
+    type BackendParsedItem = { parsed?: unknown; resumeData?: ResumeData; filename?: string; text_length?: number; [k: string]: unknown };
+    type BackendParsedMap = Record<string, BackendParsedItem>;
+    const parsedMap: BackendParsedMap = await res.json();
+
+    // Build payload for /generate-resume using the raw `parsed` objects returned from /parse-data
+    const dataPayload: Record<string, { parsed: unknown }> = {};
+    Object.entries(parsedMap || {}).forEach(([key, val]) => {
+      if (val && typeof val === "object") {
+        dataPayload[key] = { parsed: (val.parsed ?? val) as unknown };
+      }
+    });
+
+    const res2 = await fetch(`${BACKEND_API_BASE}/generate-resume`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data: dataPayload }),
+    });
+    if (!res2.ok) throw new Error(`Generate failed (${res2.status})`);
+    const merged = await res2.json();
+    const rd = merged?.resumeData;
+    if (rd && this.validateResumeData(rd)) return rd;
+    return this.getEmptyResumeData();
+  }
+
   static async fetchUserData(userId?: string): Promise<ResumeData> {
     try {
-      // Simulate API delay
-      await delay(1000);
-      
-      // In a real implementation, you would do:
-      // const response = await fetch(`/api/users/${userId}/resume-data`);
-      // if (!response.ok) throw new Error('Failed to fetch user data');
-      // return await response.json();
-      
-      // For now, return sample data
-      console.log(`Fetching data for user: ${userId || 'anonymous'}`);
+      // Prefer existing app API (can be backed by DB or fall back to mocked data)
+      const response = await fetch(API_ENDPOINTS.getUserData(userId || "anonymous"));
+      if (response.ok) {
+        const json = await response.json();
+        if (this.validateResumeData(json)) return json;
+      }
+      // Fallback to local sample if not available
+      await delay(500);
       return { ...sampleUserData };
     } catch (error) {
       console.error('Error fetching user data:', error);
@@ -119,22 +215,11 @@ export class UserDataService {
     }
   }
 
-  /**
-   * Save user data to API endpoint
-   * In a real application, this would make an HTTP request to your backend
-   */
+
   static async saveUserData(data: ResumeData, userId?: string): Promise<void> {
     try {
       // Simulate API delay
       await delay(500);
-      
-      // In a real implementation, you would do:
-      // const response = await fetch(`/api/users/${userId}/resume-data`, {
-      //   method: 'PUT',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(data)
-      // });
-      // if (!response.ok) throw new Error('Failed to save user data');
       
       console.log(`User data saved successfully for user: ${userId || 'anonymous'}`, data);
     } catch (error) {

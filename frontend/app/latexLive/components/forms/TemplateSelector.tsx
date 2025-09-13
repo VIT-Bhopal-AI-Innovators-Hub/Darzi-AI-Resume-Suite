@@ -1,8 +1,8 @@
 import React from 'react';
 
 interface TemplateSelectorProps {
-  selectedTemplate: 'classic' | 'modern' | 'creative' | 'professional' | 'minimalist';
-  setSelectedTemplate: (template: 'classic' | 'modern' | 'creative' | 'professional' | 'minimalist') => void;
+  selectedTemplate: 'classic' | 'modern' | 'Academic' | 'creative' | 'professional' | 'minimalist';
+  setSelectedTemplate: (template: 'classic' | 'modern' | 'Academic' | 'creative' | 'professional' | 'minimalist') => void;
   pageSize: 'a4' | 'letter';
   setPageSize: (size: 'a4' | 'letter') => void;
   fontFamily: 'serif' | 'sans-serif' | 'mono';
@@ -38,17 +38,11 @@ export default function TemplateSelector({
           <select
             className="w-full bg-black/40 border border-white/10 rounded-md px-3 py-2 text-sm outline-none focus:border-white/30"
             value={selectedTemplate}
-            onChange={(e) =>
-              setSelectedTemplate(
-                e.target.value as 'classic' | 'modern' | 'creative' | 'professional' | 'minimalist'
-              )
-            }
+            onChange={(e) => setSelectedTemplate(e.target.value as 'classic' | 'modern' | 'Academic' | 'creative' | 'professional' | 'minimalist')}
           >
             <option value="classic">Classic</option>
             <option value="modern">Modern</option>
             <option value="creative">Creative</option>
-            <option value="professional">Professional</option>
-            <option value="minimalist">Minimalist</option>
           </select>
         </div>
         <div className="min-w-0">
