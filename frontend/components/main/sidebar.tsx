@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Logo } from "../logo";
+import { LogoFull } from "../logo";
 
 const NavItem = ({
   icon,
@@ -54,32 +54,6 @@ const NavItem = ({
   </Link>
 );
 
-const DisabledNavItem = ({
-  icon,
-  label,
-  isCollapsed = false,
-}: {
-  icon: React.ReactElement;
-  label: string;
-  isCollapsed?: boolean;
-}) => (
-  <div
-    className={`flex items-center px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-300 text-gray-500 bg-transparent border border-transparent opacity-60 cursor-not-allowed ${
-      isCollapsed ? "justify-center" : ""
-    }`}
-    title={`${label} (Coming Soon)`}
-  >
-    <div
-      className={`p-1.5 ${isCollapsed ? "" : "mr-3"} rounded-lg bg-gray-800`}
-    >
-      {React.cloneElement(icon, {
-        className: "h-5 w-5 text-gray-400",
-      } as React.HTMLAttributes<SVGElement>)}
-    </div>
-    {!isCollapsed && <span className="whitespace-nowrap">{label}</span>}
-  </div>
-);
-
 export default function Sidebar({
   onToggle,
 }: {
@@ -102,12 +76,9 @@ export default function Sidebar({
     >
       <div className="relative h-full flex flex-col justify-between p-4 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-left mb-8 relative h-12">
+        <div className="flex items-center justify-center mb-8 relative h-12">
           {!isCollapsed ? (
-            <h1 className="text-2xl font-bold text-white tracking-wider whitespace-nowrap">
-              <Logo className="mr-2 inline-block" />
-              DARZI
-            </h1>
+            <LogoFull className="mr-2 inline-block" />
           ) : (
             <button
               onClick={toggleSidebar}
@@ -149,8 +120,8 @@ export default function Sidebar({
             </NavItem>
             <NavItem
               icon={<FileText />}
-              href="/resume-editor"
-              active={pathname === "/resume-editor"}
+              href="/latexLive"
+              active={pathname === "/latexLive"}
               isCollapsed={isCollapsed}
             >
               Resume Editor

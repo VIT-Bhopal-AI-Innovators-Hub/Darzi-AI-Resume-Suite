@@ -25,6 +25,11 @@ const contributors = [
     role: "Contributor",
   },
   {
+    name: "Ayush Pandey",
+    username: "AyushPandey003",
+    role: "Contributor",
+  },
+  {
     name: "Swayam Prakash Panda",
     username: "Swayam200",
     role: "Contributor",
