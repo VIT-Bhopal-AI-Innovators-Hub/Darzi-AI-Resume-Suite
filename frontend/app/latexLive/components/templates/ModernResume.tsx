@@ -81,7 +81,7 @@ export default function ModernResume({ data, primaryColor, secondaryColor }: Mod
                 <div className="text-sm space-y-2">
                   {data.links.map((link, i) => (
                     <div key={i}>
-                      <div className="font-bold">{link.name}</div>
+                      <div className="font-bold">{link.label}</div>
                       <div style={{ color: secondaryColor }} className="break-all text-xs"><a href={link.url} target="_blank" rel="noreferrer" className="underline">{link.url}</a></div>
                     </div>
                   ))}

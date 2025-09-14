@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { LogoFull } from "@/components/logo";
 import {
   Home,
   FileText,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Logo } from "../logo";
 
 const NavItem = ({
   icon,
@@ -105,7 +105,7 @@ export default function Sidebar({
         <div className="flex items-center justify-left mb-8 relative h-12">
           {!isCollapsed ? (
             <h1 className="text-2xl font-bold text-white tracking-wider whitespace-nowrap">
-              <LogoFull className="mr-2 inline-block" />
+              <Logo className="mr-2 inline-block" />
               DARZI
             </h1>
           ) : (

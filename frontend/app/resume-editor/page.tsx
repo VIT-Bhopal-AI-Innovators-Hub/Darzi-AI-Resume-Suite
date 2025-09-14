@@ -164,7 +164,7 @@ export default function ResumeEditor() {
       return "";
     }
 
-    const resumeData: ResumeData = {
+    const resumeData = {
       name: formData.fullName,
       title: formData.title,
       email: formData.email,
@@ -213,13 +213,6 @@ export default function ResumeEditor() {
             url: proj.link,
           })),
       ],
-    };
-
-    return generateResumeTex(resumeData, latexSettings.selectedTemplate, {
-      pageSize: latexSettings.pageSize,
-      fontFamily: latexSettings.fontFamily,
-      primaryColor: latexSettings.primaryColor,
-      secondaryColor: latexSettings.secondaryColor,
       sectionOrder: sections
         .filter(s => s.type !== 'basic')
         .sort((a, b) => a.order - b.order)
@@ -231,6 +224,13 @@ export default function ResumeEditor() {
           }
           return s.type;
         }),
+    };
+
+    return generateResumeTex(resumeData as ResumeData, latexSettings.selectedTemplate, {
+      pageSize: latexSettings.pageSize,
+      fontFamily: latexSettings.fontFamily,
+      primaryColor: latexSettings.primaryColor,
+      secondaryColor: latexSettings.secondaryColor,
     });
   }, [
     formData,

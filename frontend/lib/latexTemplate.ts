@@ -193,16 +193,16 @@ function processResumeData(data: ResumeData, options?: {
   const skillsCommaSeparated = skillsArray.join(', ');
 
   const linksList = (data.links || [])
-    .filter(link => link && (link.label?.trim() || link.url?.trim()))
+    .filter(link => link && (link.name?.trim() || link.url?.trim()))
     .map((link) => {
-      const label = escapeLatex(link.label?.trim() || '');
+      const name = escapeLatex(link.name?.trim() || '');
       const url = escapeLatex(link.url?.trim() || '');
-      if (label && url) {
-        return `\\href{${url}}{${label}}`;
+      if (name && url) {
+        return `\\href{${url}}{${name}}`;
       } else if (url) {
         return `\\href{${url}}{${url}}`;
-      } else if (label) {
-        return label;
+      } else if (name) {
+        return name;
       }
       return '';
     })
@@ -211,13 +211,13 @@ function processResumeData(data: ResumeData, options?: {
 
   // Create a links section (LaTeX lines) to append after skills
   const linksSection = (data.links || [])
-    .filter(link => link && (link.label?.trim() || link.url?.trim()))
+    .filter(link => link && (link.name?.trim() || link.url?.trim()))
     .map((link) => {
-      const label = escapeLatex(link.label?.trim() || '');
+      const name = escapeLatex(link.name?.trim() || '');
       const url = escapeLatex(link.url?.trim() || '');
-      if (label && url) return `\\href{${url}}{${label}}`;
+      if (name && url) return `\\href{${url}}{${name}}`;
       if (url) return `\\href{${url}}{${url}}`;
-      return label;
+      return name;
     })
     .filter(Boolean)
     .join(' \\\\ ');
