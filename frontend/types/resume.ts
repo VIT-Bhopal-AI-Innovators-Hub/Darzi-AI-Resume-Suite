@@ -46,15 +46,23 @@ export interface ResumeData {
     company: string;
     role: string;
     bullets: string[];
+    date?: string;
   }[];
   education: {
     school: string;
     degree: string;
+    date?: string;
   }[];
   skills: string[];
   links: {
     label: string;
     url: string;
+  }[];
+  projects?: {
+    title: string;
+    technologies?: string;
+    description?: string;
+    date?: string;
   }[];
   customSections?: {
     id: string;

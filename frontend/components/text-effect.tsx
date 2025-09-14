@@ -180,7 +180,8 @@ const createVariantsWithTransition = (
 ): Variants => {
   if (!transition) return baseVariants;
 
-  const { exit: _, ...mainTransition } = transition;
+  // Strip `exit` from transition to avoid propagating it and unused bindings
+  const { /* exit: _ignoredExit, */ ...mainTransition } = transition as Omit<Transition & { exit?: Transition }, 'exit'>;
 
   return {
     ...baseVariants,

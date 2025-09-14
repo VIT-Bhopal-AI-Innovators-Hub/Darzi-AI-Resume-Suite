@@ -1,14 +1,13 @@
-import { User, Settings, Search, Bell } from "lucide-react";
+import { User } from "lucide-react";
 import Link from "next/link";
-import { SignedIn, SignedOut, UserButton, useUser } from "@clerk/nextjs";
+import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 
 interface HeaderProps {
   pageName?: string;
 }
 
 export default function Header({ pageName = "Dashboard" }: HeaderProps) {
-  // const { user, isLoaded } = useUser();
-  // const firstName = !isLoaded ? "Loading..." : user?.firstName || "User";
+  // User info via Clerk can be used if needed
   return (
     <header className="flex justify-between items-center p-4">
       <div>
