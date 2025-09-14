@@ -55,7 +55,7 @@ export interface ResumeData {
   }[];
   skills: string[];
   links: {
-    name: string;
+    label: string;
     url: string;
   }[];
   projects?: {

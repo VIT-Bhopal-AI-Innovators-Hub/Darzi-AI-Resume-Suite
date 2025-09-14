@@ -83,7 +83,7 @@ const StatCard = ({
 
 const WelcomeCard = ({ name }: { name: string }) => (
   <Card className="flex flex-col justify-between h-full !p-0 overflow-hidden relative">
-    <div className="absolute inset-0 bg-gradient-to-br from-gray-900 to-black opacity-80"></div>
+    <div className="absolute inset-0 bg-gradient-to-br opacity-80"></div>
     <div className="p-6 pb-0 z-10">
       <p className="text-white text-sm">Welcome,</p>
       <h3 className="text-white text-2xl font-bold">{name}</h3>
@@ -291,31 +291,6 @@ const MyResumesCard = ({ data }: { data: Resume[] }) => (
   </Card>
 );
 
-// const ActionItemsCard = ({ data }: { data: ActionItem[] }) => (
-//   <Card>
-//     <h4 className="font-bold text-white">AI Action Items</h4>
-//     <p className="text-sm text-gray-400 flex items-center">
-//       <ArrowUp className="h-4 w-4 text-gray-300 mr-1" /> Suggestions to improve
-//       your score
-//     </p>
-//     <div className="mt-6 space-y-6">
-//       {data.map((item, index) => (
-//         <div key={index} className="flex items-start">
-//           <div className="p-2 bg-gray-800 rounded-full mr-4">
-//             {React.cloneElement(item.icon, {
-//               className: "text-gray-300",
-//             } as React.HTMLAttributes<SVGElement>)}
-//           </div>
-//           <div>
-//             <p className="text-sm font-bold text-white">{item.text}</p>
-//             <p className="text-xs text-gray-400">{item.suggestion}</p>
-//           </div>
-//         </div>
-//       ))}
-//     </div>
-//   </Card>
-// );
-
 export default function App() {
   const [stats, setStats] = useState<StatData | null>(null);
   const [keywords, setKeywords] = useState<KeywordData[]>([]);
@@ -414,35 +389,6 @@ export default function App() {
           >
             <Header pageName="Dashboard" />
             <div className="p-4">
-              {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                <StatCard
-                  title="Resumes Created"
-                  value={stats?.resumesCreated || 0}
-                  change="+2"
-                  changeType="increase"
-                  icon={<FileText className="text-black" />}
-                />
-                <StatCard
-                  title="Avg. ATS Score"
-                  value={`${stats?.avgAtsScore || 0}%`}
-                  change="+5%"
-                  changeType="increase"
-                  icon={<Target className="text-black" />}
-                />
-                <StatCard
-                  title="Keywords Matched"
-                  value={stats?.keywordsMatched || 0}
-                  change="+12"
-                  changeType="increase"
-                  icon={<ListChecks className="text-black" />}
-                />
-                <StatCard
-                  title="Templates Used"
-                  value={stats?.templatesUsed || 0}
-                  icon={<BarChart3 className="text-black" />}
-                />
-              </div> */}
-
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                 <div className="lg:col-span-1">
                   <WelcomeCard name={displayName} />
@@ -459,12 +405,7 @@ export default function App() {
                 <AtsScoreHistoryCard />
                 <KeywordAnalysisCard data={keywords} />
               </div>
-
-              {/* <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                <MyResumesCard data={resumes} />
-                <ActionItemsCard data={actionItems} />
-              </div> */}
-              {/* <FooterSection /> */}
+              <FooterSection />
             </div>
           </main>
         </div>

@@ -69,9 +69,9 @@ const sampleUserData: ResumeData = {
     "CI/CD (GitHub Actions)"
   ],
   links: [
-    { name: "GitHub", url: "https://github.com/johndoe" },
-    { name: "LinkedIn", url: "https://linkedin.com/in/johndoe" },
-    { name: "Portfolio", url: "https://johndoe.dev" }
+    { label: "GitHub", url: "https://github.com/johndoe" },
+    { label: "LinkedIn", url: "https://linkedin.com/in/johndoe" },
+    { label: "Portfolio", url: "https://johndoe.dev" }
   ],
   customSections: [
     {

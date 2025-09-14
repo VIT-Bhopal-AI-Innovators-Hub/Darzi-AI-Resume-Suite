@@ -29,8 +29,7 @@ COPY requirements.txt pyproject.toml uv.lock* ./
 RUN uv pip install --no-cache -r requirements.txt
 
 # Copy source code
-COPY src/ ./src/
-COPY main.py ./
+COPY . /code
 
 # Install project in production mode
 RUN uv pip install -e . --no-deps
@@ -50,7 +49,7 @@ EXPOSE $PORT
 
 # Health check for production monitoring
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python -c "import requests; import os; requests.get(f'http://localhost:{os.getenv(\"PORT\", \"7860\")}/health', timeout=5).raise_for_status()" || exit 1
+    CMD curl --fail http://localhost:7860/health || exit 1
 
 # Production startup command with correct uvicorn options
 CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT} --workers ${WORKERS} --timeout-keep-alive ${TIMEOUT_KEEP_ALIVE} --limit-max-requests ${LIMIT_MAX_REQUESTS}"]

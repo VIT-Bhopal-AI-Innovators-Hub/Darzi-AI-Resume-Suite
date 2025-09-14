@@ -9,7 +9,7 @@ interface LinksFormProps {
 
 export default function LinksForm({ data, updateField }: LinksFormProps) {
   const addLink = () => {
-    const updatedLinks = [...(data.links || []), { name: '', url: '' }];
+    const updatedLinks = [...(data.links || []), { label: '', url: '' }];
     updateField('links', updatedLinks);
   };
 
@@ -45,7 +45,7 @@ export default function LinksForm({ data, updateField }: LinksFormProps) {
           <div className="flex flex-col lg:flex-row gap-3">
             <div className="flex-1 min-w-0 space-y-3">
               <input
-                value={link.name}
+                value={link.label}
                 onChange={(e) => updateLink(index, 'name', e.target.value)}
                 placeholder="Link Name (e.g., LinkedIn, GitHub)"
                 className="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-sm outline-none focus:border-white/30 font-semibold"

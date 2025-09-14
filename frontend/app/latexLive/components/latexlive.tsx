@@ -58,8 +58,8 @@ export default function ResumeGenerator() {
     experiences: [],
     education: [],
     skills: [],
-  links: [],
-  customSections: [],
+    links: [],
+    customSections: [],
   });
   const [selectedTemplate, setSelectedTemplate] = useState<
     "classic" | "modern" | "Academic" | "creative" | "professional" | "minimalist"
@@ -127,10 +127,16 @@ export default function ResumeGenerator() {
         }
       } catch (error) {
         console.error("Error generating initial LaTeX:", error);
-        setLog((s) => s + "\nError generating initial LaTeX: " + (error instanceof Error ? error.message : "Unknown error"));
+        setLog(
+          (s) =>
+            s +
+            "\nError generating initial LaTeX: " +
+            (error instanceof Error ? error.message : "Unknown error")
+        );
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to load user data";
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to load user data";
       setDataLoadError(errorMessage);
       setLog((s) => s + "\nError loading user data: " + errorMessage);
     } finally {
@@ -169,7 +175,8 @@ export default function ResumeGenerator() {
       setHasUnsavedChanges(false);
       setLog((s) => s + "\nUser data saved successfully");
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to save user data";
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to save user data";
       setLog((s) => s + "\nError saving user data: " + errorMessage);
     } finally {
       setIsSavingUserData(false);
@@ -261,10 +268,7 @@ export default function ResumeGenerator() {
   }, [connectWebSocket]);
 
   const scheduleBuild = useCallback(
-    (
-      latest: ResumeData,
-      tmpl: typeof selectedTemplate = selectedTemplate
-    ) => {
+    (latest: ResumeData, tmpl: typeof selectedTemplate = selectedTemplate) => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
       debounceRef.current = window.setTimeout(() => {
         try {
@@ -347,7 +351,7 @@ export default function ResumeGenerator() {
     } else {
       setLog((s) => s + "\\nManual priority active — skipping auto LaTeX update");
     }
-    
+
     scheduleBuild(data, selectedTemplate);
   }, [selectedTemplate, pageSize, fontFamily, primaryColor, secondaryColor, data, scheduleBuild, sectionSpacingMm, manualLatexPriority]);
 
@@ -379,7 +383,7 @@ export default function ResumeGenerator() {
       return next;
     });
   }
-  
+
   function removeExperience(index: number) {
     setData((prev) => {
       const newExperiences = [...prev.experiences];
@@ -435,7 +439,7 @@ export default function ResumeGenerator() {
       fontFamily,
       primaryColor,
       secondaryColor,
-    sectionSpacingMm,
+      sectionSpacingMm,
     };
 
     switch (selectedTemplate) {
@@ -536,23 +540,44 @@ export default function ResumeGenerator() {
                       <button
                         onClick={loadUserData}
                         disabled={isLoadingUserData}
-                        title={isLoadingUserData ? "Loading sample data" : "Load sample data"}
-                        aria-label={isLoadingUserData ? "Loading sample data" : "Load sample data"}
+                        title={
+                          isLoadingUserData
+                            ? "Loading sample data"
+                            : "Load sample data"
+                        }
+                        aria-label={
+                          isLoadingUserData
+                            ? "Loading sample data"
+                            : "Load sample data"
+                        }
                         className="p-2 sm:px-3 sm:py-2 bg-blue-600 text-white rounded text-xs flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700"
                       >
                         <User className="h-4 w-4" />
-                        <span className="hidden sm:inline">{isLoadingUserData ? "Loading..." : "Load Sample Data"}</span>
+                        <span className="hidden sm:inline">
+                          {isLoadingUserData
+                            ? "Loading..."
+                            : "Load Sample Data"}
+                        </span>
                       </button>
 
                       <button
                         onClick={saveUserData}
-                        disabled={isSavingUserData || (!hasUnsavedChanges && autoSaveEnabled)}
-                        title={isSavingUserData ? "Saving changes" : "Save changes"}
-                        aria-label={isSavingUserData ? "Saving changes" : "Save changes"}
+                        disabled={
+                          isSavingUserData ||
+                          (!hasUnsavedChanges && autoSaveEnabled)
+                        }
+                        title={
+                          isSavingUserData ? "Saving changes" : "Save changes"
+                        }
+                        aria-label={
+                          isSavingUserData ? "Saving changes" : "Save changes"
+                        }
                         className="p-2 sm:px-3 sm:py-2 bg-green-600 text-white rounded text-xs flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-700"
                       >
                         <Save className="h-4 w-4" />
-                        <span className="hidden sm:inline">{isSavingUserData ? "Saving..." : "Save Changes"}</span>
+                        <span className="hidden sm:inline">
+                          {isSavingUserData ? "Saving..." : "Save Changes"}
+                        </span>
                       </button>
 
                       <button
@@ -576,8 +601,11 @@ export default function ResumeGenerator() {
                     </div>
                   )}
                   <div className="mt-2 text-xs text-gray-400">
-                    Click "Load Sample Data" to populate all fields with test data. You can then edit any field as needed. 
-                    {autoSaveEnabled ? " Changes will be auto-saved every 3 seconds." : " Manual save required."}
+                    Click "Load Sample Data" to populate all fields with test
+                    data. You can then edit any field as needed.
+                    {autoSaveEnabled
+                      ? " Changes will be auto-saved every 3 seconds."
+                      : " Manual save required."}
                   </div>
                 </div>
               </div>
@@ -730,7 +758,14 @@ export default function ResumeGenerator() {
                               setLog((s) => s + "\\nSynced LaTeX and disabled manual priority");
                             }
                           } catch (error) {
-                            setLog((s) => s + "\\nError syncing LaTeX: " + (error instanceof Error ? error.message : "Unknown error"));
+                            setLog(
+                              (s) =>
+                                s +
+                                "\\nError syncing LaTeX: " +
+                                (error instanceof Error
+                                  ? error.message
+                                  : "Unknown error")
+                            );
                           }
                         }}
                         className="text-xs px-2 py-1 bg-blue-600 text-white rounded"
@@ -738,7 +773,9 @@ export default function ResumeGenerator() {
                         Sync LaTeX
                       </button>
                       {loading && (
-                        <div className="text-xs text-yellow-400">Building...</div>
+                        <div className="text-xs text-yellow-400">
+                          Building...
+                        </div>
                       )}
                       {pdfUrl && (
                         <a
