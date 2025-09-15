@@ -61,8 +61,8 @@ class ATSCheckerPayload(BaseModel):
 
 class ATSAnalyzer:
     def __init__(self):
-        self.esco_zip_path = 'backend/ats/data/ESCO dataset - v1.2.0 - classification - en - csv.zip'
-        self.vectorizer_path = 'backend/ats/data/ats_tfidf_vectorizer/tfidf_vectorizer.pkl'
+        self.esco_zip_path = 'backend/api/src/ats/data/ESCO dataset - v1.2.0 - classification - en - csv.zip'  
+        self.vectorizer_path = 'backend/api/scr/ats/data/ats_tfidf_vectorizer/tfidf_vectorizer.pkl'
         self.tfidf_vectorizer = None
         self.buzzwords = buzzwords if 'buzzwords' in globals() else self._get_default_buzzwords()
         self._load_vectorizer()
