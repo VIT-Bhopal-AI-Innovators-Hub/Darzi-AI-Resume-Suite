@@ -86,7 +86,7 @@ export default function ATSCheckerPage() {
     formData.append("job_description", jobDescriptionText);
 
     try {
-      const response = await fetch("http://localhost:7860/ats-checker", {
+      const response = await fetch("https://vit-bhopal-ai-innovators-hub-darzi-api-server.hf.space/ats-checker", {
         method: "POST",
         body: formData,
       });
