@@ -9,11 +9,9 @@ import { Card } from "./components/card";
 import {
   RefreshCcw,
   FileText,
-  BarChart3,
   Bot,
   ChevronRight,
   MoreVertical,
-  ArrowUp,
   Target,
   CheckCircle,
   BrainCircuit,
@@ -107,7 +105,7 @@ const OverallAtsScoreCard = ({ score }: { score: number }) => (
     <p className="text-gray-400 text-sm">Overall ATS Score</p>
     <p className="text-gray-500 text-xs mb-4">Based on your latest resume</p>
     <div className="relative w-32 h-32">
-      <svg className="w-full h-full" viewBox="0 0 36 36">
+      <svg className="w-full h-full rotate-90" viewBox="0 0 36 36">
         <path
           className="text-gray-800"
           d="M18 2.0845
@@ -394,7 +392,7 @@ export default function App() {
                   <WelcomeCard name={displayName} />
                 </div>
                 <div className="lg:col-span-1">
-                  <OverallAtsScoreCard score={stats?.avgAtsScore || 0} />
+                  <OverallAtsScoreCard score={Number(localStorage.getItem("atsScore")) || 0} />
                 </div>
                 <div className="lg:col-span-1">
                   <RecentActivityCard />
