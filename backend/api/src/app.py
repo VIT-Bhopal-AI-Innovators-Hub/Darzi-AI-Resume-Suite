@@ -20,16 +20,6 @@ except Exception:
 from utils.llm.manager import LLMManager
 from utils.data_extractor.core import extract_text as vision_extract_text
 
-
-app = FastAPI(title="DARZI AI Resume Suite API", openapi_url="/openapi.json")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 try:
     from ats.ats import (
         clean_text,
@@ -47,6 +37,14 @@ except ImportError as e:
 
 
 
+app = FastAPI(title="DARZI AI Resume Suite API", openapi_url="/openapi.json")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 class GenerateResumePayload(BaseModel):
     data: Dict[str, Any]
     preferred_provider: Optional[str] = None
