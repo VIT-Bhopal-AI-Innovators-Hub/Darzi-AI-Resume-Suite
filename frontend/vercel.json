@@ -1,3 +1,0 @@
-{
-  "ignoreCommand": "[ $(git rev-list --count HEAD) -le 1 ] || ! git diff --quiet HEAD~1 HEAD -- ."
-}
