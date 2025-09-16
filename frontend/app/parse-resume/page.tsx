@@ -135,7 +135,7 @@ export default function ResumeEditorPage() {
       });
 
       const data = await response.json();
-      if (data.parsed_by) {
+      if (data._parsed_by) {
         delete data['_parsed_by'];
       }
 
