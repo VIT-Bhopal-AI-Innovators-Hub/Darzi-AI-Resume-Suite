@@ -82,11 +82,12 @@ export default function ATSCheckerPage() {
     setAnalysisComplete(false);
 
     const formData = new FormData();
-    formData.append("resume_file", resumeFile);
+    formData.append("file", resumeFile);
     formData.append("job_description", jobDescriptionText);
 
     try {
       const response = await fetch("https://vit-bhopal-ai-innovators-hub-darzi-api-server.hf.space/ats-checker", {
+      // const response = await fetch("http://localhost:7860/ats-checker", {
         method: "POST",
         body: formData,
       });
@@ -247,7 +248,7 @@ export default function ATSCheckerPage() {
                       <div>
                         <h3 className="font-semibold mt-2 mb-1">Categories:</h3>
                         <ul className="space-y-2">
-                          {Object.entries(analysisResult.categories).map(
+                          {analysisResult.categories && Object.entries(analysisResult.categories).map(
                             ([cat, val]: any) => (
                               <li
                                 key={cat}
