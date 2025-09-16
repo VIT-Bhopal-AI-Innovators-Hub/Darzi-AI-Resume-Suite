@@ -2,11 +2,20 @@
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { Eye, X, Download, Code, RefreshCw, Save, User, Menu } from "lucide-react";
+import {
+  Eye,
+  X,
+  Download,
+  Code,
+  RefreshCw,
+  Save,
+  User,
+  Menu,
+} from "lucide-react";
 // Clerk removed from this component to avoid redundant errors
 import type { ResumeData } from "@/types/resume";
 import { generateResumeTex } from "@/lib/latexTemplate";
-import ReconnectingWebSocket from '@/lib/reconnectingWebsocket';
+import ReconnectingWebSocket from "@/lib/reconnectingWebsocket";
 import { UserDataService } from "@/lib/userDataService";
 import { useAutoSave } from "@/lib/hooks/useAutoSave";
 import Sidebar from "@/components/main/sidebar";
@@ -44,25 +53,31 @@ const Editor = dynamic(() => import("@monaco-editor/react"), {
 });
 
 const WS_URL = "wss://ayush-003-latexwebsocket.hf.space";
+const defaultResumeData: ResumeData = {
+  name: "",
+  title: "",
+  email: "",
+  phone: "",
+  location: "",
+  website: "",
+  summary: "",
+  experiences: [],
+  education: [],
+  skills: [],
+  links: [],
+  customSections: [],
+};
 
 export default function ResumeGenerator() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [data, setData] = useState<ResumeData>({
-    name: "",
-    title: "",
-    email: "",
-    phone: "",
-    location: "",
-    website: "",
-    summary: "",
-    experiences: [],
-    education: [],
-    skills: [],
-    links: [],
-    customSections: [],
-  });
+  const [data, setData] = useState<ResumeData>(defaultResumeData);
   const [selectedTemplate, setSelectedTemplate] = useState<
-    "classic" | "modern" | "Academic" | "creative" | "professional" | "minimalist"
+    | "classic"
+    | "modern"
+    | "Academic"
+    | "creative"
+    | "professional"
+    | "minimalist"
   >("classic");
   const [pageSize, setPageSize] = useState<"a4" | "letter">("letter");
   const [fontFamily, setFontFamily] = useState<"serif" | "sans-serif" | "mono">(
@@ -78,7 +93,8 @@ export default function ResumeGenerator() {
     "preview"
   );
   const [latexCode, setLatexCode] = useState<string>("");
-  const [manualLatexPriority, setManualLatexPriority] = useState<boolean>(false);
+  const [manualLatexPriority, setManualLatexPriority] =
+    useState<boolean>(false);
 
   // New state for data management
   const [isLoadingUserData, setIsLoadingUserData] = useState<boolean>(false);
@@ -109,7 +125,7 @@ export default function ResumeGenerator() {
       setIsDataLoaded(true);
       setHasUnsavedChanges(false);
       setLog((s) => s + "\nUser data loaded successfully");
-      
+
       // Generate initial LaTeX code for the loaded data (only if not in manual priority)
       try {
         const tex = generateResumeTex(userData, selectedTemplate, {
@@ -123,7 +139,9 @@ export default function ResumeGenerator() {
           setLatexCode(tex);
           setLog((s) => s + "\nGenerated LaTeX code for loaded data");
         } else {
-          setLog((s) => s + "\nManual priority active — kept editor code on load");
+          setLog(
+            (s) => s + "\nManual priority active — kept editor code on load"
+          );
         }
       } catch (error) {
         console.error("Error generating initial LaTeX:", error);
@@ -142,7 +160,15 @@ export default function ResumeGenerator() {
     } finally {
       setIsLoadingUserData(false);
     }
-  }, [selectedTemplate, pageSize, fontFamily, primaryColor, secondaryColor, sectionSpacingMm, manualLatexPriority]);
+  }, [
+    selectedTemplate,
+    pageSize,
+    fontFamily,
+    primaryColor,
+    secondaryColor,
+    sectionSpacingMm,
+    manualLatexPriority,
+  ]);
 
   // Save user data to the service
   const saveUserData = useCallback(async () => {
@@ -168,7 +194,9 @@ export default function ResumeGenerator() {
         })),
         skills: Array.isArray(data.skills) ? data.skills : [],
         links: Array.isArray(data.links) ? data.links : [],
-        customSections: Array.isArray(data.customSections) ? data.customSections : [],
+        customSections: Array.isArray(data.customSections)
+          ? data.customSections
+          : [],
       };
 
       await UserDataService.saveUserData(sanitized);
@@ -184,9 +212,34 @@ export default function ResumeGenerator() {
   }, [data]);
 
   // Load user data on component mount
+  // useEffect(() => {
+  //   loadUserData();
+  // }, [loadUserData]);
+
   useEffect(() => {
-    loadUserData();
-  }, [loadUserData]);
+    const raw = localStorage.getItem("parsedData");
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        setData({
+          name: parsed?.contact_information?.full_name || "",
+          title: parsed?.contact_information?.title || "",
+          email: parsed?.contact_information?.email || "",
+          phone: parsed?.contact_information?.phone || "",
+          location: parsed?.contact_information?.location || "",
+          website: parsed?.contact_information?.website || "",
+          summary: parsed?.professional_summary || "",
+          experiences: parsed?.work_experience || [],
+          education: parsed?.education || [],
+          skills: parsed?.skills || [],
+          links: [],
+          customSections: [],
+        });
+      } catch {
+        setData(defaultResumeData);
+      }
+    }
+  }, []);
 
   // Auto-save functionality
   useAutoSave({
@@ -197,21 +250,24 @@ export default function ResumeGenerator() {
   });
 
   // Handle manual LaTeX code changes
-  const handleLatexCodeChange = useCallback((value: string | undefined) => {
-    const newCode = value || "";
-    setLatexCode(newCode);
-    // Once user edits the code, prioritize manual LaTeX for PDF builds
-    if (!manualLatexPriority) setManualLatexPriority(true);
-    
-    // Debounce sending the code to WebSocket to avoid too many requests
-    if (debounceRef.current) window.clearTimeout(debounceRef.current);
-    debounceRef.current = window.setTimeout(() => {
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: "edit", tex: newCode }));
-        setLog((s) => s + "\\nSent manual edit to build (manual priority)");
-      }
-    }, 1000) as unknown as number;
-  }, [manualLatexPriority]);
+  const handleLatexCodeChange = useCallback(
+    (value: string | undefined) => {
+      const newCode = value || "";
+      setLatexCode(newCode);
+      // Once user edits the code, prioritize manual LaTeX for PDF builds
+      if (!manualLatexPriority) setManualLatexPriority(true);
+
+      // Debounce sending the code to WebSocket to avoid too many requests
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+      debounceRef.current = window.setTimeout(() => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({ type: "edit", tex: newCode }));
+          setLog((s) => s + "\\nSent manual edit to build (manual priority)");
+        }
+      }, 1000) as unknown as number;
+    },
+    [manualLatexPriority]
+  );
 
   const connectWebSocket = useCallback(() => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) return;
@@ -276,7 +332,9 @@ export default function ResumeGenerator() {
             const code = latexCode;
             if (wsRef.current?.readyState === WebSocket.OPEN) {
               wsRef.current.send(JSON.stringify({ type: "edit", tex: code }));
-              setLog((s) => s + "\\nManual priority: sent editor code to build");
+              setLog(
+                (s) => s + "\\nManual priority: sent editor code to build"
+              );
               setLoading(true);
             }
             return;
@@ -306,7 +364,16 @@ export default function ResumeGenerator() {
         }
       }, 700) as unknown as number;
     },
-  [pageSize, fontFamily, primaryColor, secondaryColor, selectedTemplate, sectionSpacingMm, manualLatexPriority, latexCode]
+    [
+      pageSize,
+      fontFamily,
+      primaryColor,
+      secondaryColor,
+      selectedTemplate,
+      sectionSpacingMm,
+      manualLatexPriority,
+      latexCode,
+    ]
   );
 
   function updateField<K extends keyof ResumeData>(
@@ -333,7 +400,7 @@ export default function ResumeGenerator() {
     setPdfUrl(null);
     setLoading(true);
     setLog((s) => s + "\\nTemplate/style changed — rebuilding");
-    
+
     if (!manualLatexPriority) {
       // Immediately update LaTeX code for the new template when not in manual mode
       try {
@@ -349,11 +416,23 @@ export default function ResumeGenerator() {
         console.error("Error generating LaTeX for template change:", error);
       }
     } else {
-      setLog((s) => s + "\\nManual priority active — skipping auto LaTeX update");
+      setLog(
+        (s) => s + "\\nManual priority active — skipping auto LaTeX update"
+      );
     }
 
     scheduleBuild(data, selectedTemplate);
-  }, [selectedTemplate, pageSize, fontFamily, primaryColor, secondaryColor, data, scheduleBuild, sectionSpacingMm, manualLatexPriority]);
+  }, [
+    selectedTemplate,
+    pageSize,
+    fontFamily,
+    primaryColor,
+    secondaryColor,
+    data,
+    scheduleBuild,
+    sectionSpacingMm,
+    manualLatexPriority,
+  ]);
 
   function addExperience() {
     setData((prev) => {
@@ -461,429 +540,460 @@ export default function ResumeGenerator() {
   return (
     <>
       <div className="bg-black text-white min-h-screen font-sans">
-          <div className="hidden lg:block">
-            <Sidebar onToggle={setSidebarCollapsed} />
-          </div>
+        <div className="hidden lg:block">
+          <Sidebar onToggle={setSidebarCollapsed} />
+        </div>
 
-          {/* Mobile: menu button to open sidebar as an overlay */}
-          <button
-            className="fixed top-4 left-4 z-50 lg:hidden p-2 bg-white/10 text-white rounded-md shadow-md hover:bg-white/20"
-            onClick={() => setMobileSidebarOpen(true)}
-            aria-label="Open sidebar"
-            title="Open sidebar"
+        {/* Mobile: menu button to open sidebar as an overlay */}
+        <button
+          className="fixed top-4 left-4 z-50 lg:hidden p-2 bg-white/10 text-white rounded-md shadow-md hover:bg-white/20"
+          onClick={() => setMobileSidebarOpen(true)}
+          aria-label="Open sidebar"
+          title="Open sidebar"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+
+        {mobileSidebarOpen && (
+          <div
+            className="fixed inset-0 z-50 bg-black/60 flex lg:hidden"
+            onClick={() => setMobileSidebarOpen(false)}
           >
-            <Menu className="h-5 w-5" />
-          </button>
-
-          {mobileSidebarOpen && (
             <div
-              className="fixed inset-0 z-50 bg-black/60 flex lg:hidden"
-              onClick={() => setMobileSidebarOpen(false)}
+              className="bg-black text-white w-72 max-w-full h-full overflow-auto border-r border-white/10"
+              onClick={(e) => e.stopPropagation()}
             >
-              <div
-                className="bg-black text-white w-72 max-w-full h-full overflow-auto border-r border-white/10"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="p-3 border-b border-white/5 flex items-center justify-between">
-                  <div className="text-sm font-semibold">Menu</div>
-                  <button
-                    onClick={() => setMobileSidebarOpen(false)}
-                    className="p-2 rounded-md bg-white/5 text-white hover:bg-white/10"
-                    aria-label="Close sidebar"
-                    title="Close sidebar"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
+              <div className="p-3 border-b border-white/5 flex items-center justify-between">
+                <div className="text-sm font-semibold">Menu</div>
+                <button
+                  onClick={() => setMobileSidebarOpen(false)}
+                  className="p-2 rounded-md bg-white/5 text-white hover:bg-white/10"
+                  aria-label="Close sidebar"
+                  title="Close sidebar"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <Sidebar onToggle={setSidebarCollapsed} />
+            </div>
+          </div>
+        )}
+        <main
+          className={`transition-all duration-300 ease-in-out ${
+            // On small screens we want no left margin so content is full-width.
+            // Apply margins only at large (lg) breakpoints to account for the sidebar.
+            sidebarCollapsed ? "ml-0 lg:ml-20" : "ml-0 lg:ml-64"
+          } min-h-screen`}
+        >
+          <Header pageName="LaTeX Live Editor" />
+          <div className="p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Data Management Controls */}
+            <div className="lg:col-span-12 mb-4">
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <h3 className="font-semibold text-sm tracking-wide">
+                      USER DATA MANAGEMENT
+                    </h3>
+                    {hasUnsavedChanges && (
+                      <span className="text-xs bg-yellow-600 text-white px-2 py-1 rounded">
+                        Unsaved changes
+                      </span>
+                    )}
+                    {isDataLoaded && !hasUnsavedChanges && (
+                      <span className="text-xs bg-green-600 text-white px-2 py-1 rounded">
+                        Data loaded
+                      </span>
+                    )}
+                    <label className="flex items-center space-x-2 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={autoSaveEnabled}
+                        onChange={(e) => setAutoSaveEnabled(e.target.checked)}
+                        className="rounded"
+                      />
+                      <span>Auto-save</span>
+                    </label>
+                  </div>
+                  <div className="flex items-center flex-wrap gap-2">
+                    <button
+                      onClick={loadUserData}
+                      disabled={isLoadingUserData}
+                      title={
+                        isLoadingUserData
+                          ? "Loading sample data"
+                          : "Load sample data"
+                      }
+                      aria-label={
+                        isLoadingUserData
+                          ? "Loading sample data"
+                          : "Load sample data"
+                      }
+                      className="p-2 sm:px-3 sm:py-2 bg-blue-600 text-white rounded text-xs flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700"
+                    >
+                      <User className="h-4 w-4" />
+                      <span className="hidden sm:inline">
+                        {isLoadingUserData ? "Loading..." : "Load Sample Data"}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={saveUserData}
+                      disabled={
+                        isSavingUserData ||
+                        (!hasUnsavedChanges && autoSaveEnabled)
+                      }
+                      title={
+                        isSavingUserData ? "Saving changes" : "Save changes"
+                      }
+                      aria-label={
+                        isSavingUserData ? "Saving changes" : "Save changes"
+                      }
+                      className="p-2 sm:px-3 sm:py-2 bg-green-600 text-white rounded text-xs flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-700"
+                    >
+                      <Save className="h-4 w-4" />
+                      <span className="hidden sm:inline">
+                        {isSavingUserData ? "Saving..." : "Save Changes"}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setData(UserDataService.getEmptyResumeData());
+                        setIsDataLoaded(false);
+                        setHasUnsavedChanges(false);
+                      }}
+                      title="Clear all data"
+                      aria-label="Clear all data"
+                      className="p-2 sm:px-3 sm:py-2 bg-red-600 text-white rounded text-xs flex items-center gap-2 hover:bg-red-700"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      <span className="hidden sm:inline">Clear All</span>
+                    </button>
+                  </div>
                 </div>
-                <Sidebar onToggle={setSidebarCollapsed} />
+                {dataLoadError && (
+                  <div className="mt-2 text-xs text-red-400 bg-red-900/20 border border-red-500/20 rounded px-2 py-1">
+                    {dataLoadError}
+                  </div>
+                )}
+                <div className="mt-2 text-xs text-gray-400">
+                  Click "Load Sample Data" to populate all fields with test
+                  data. You can then edit any field as needed.
+                  {autoSaveEnabled
+                    ? " Changes will be auto-saved every 3 seconds."
+                    : " Manual save required."}
+                </div>
               </div>
             </div>
-          )}
-          <main
-            className={`transition-all duration-300 ease-in-out ${
-              // On small screens we want no left margin so content is full-width.
-              // Apply margins only at large (lg) breakpoints to account for the sidebar.
-              sidebarCollapsed ? "ml-0 lg:ml-20" : "ml-0 lg:ml-64"
-            } min-h-screen`}
-          >
-            <Header pageName="LaTeX Live Editor" />
-            <div className="p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Data Management Controls */}
-              <div className="lg:col-span-12 mb-4">
-                <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <h3 className="font-semibold text-sm tracking-wide">
-                        USER DATA MANAGEMENT
-                      </h3>
-                      {hasUnsavedChanges && (
-                        <span className="text-xs bg-yellow-600 text-white px-2 py-1 rounded">
-                          Unsaved changes
-                        </span>
-                      )}
-                      {isDataLoaded && !hasUnsavedChanges && (
-                        <span className="text-xs bg-green-600 text-white px-2 py-1 rounded">
-                          Data loaded
-                        </span>
-                      )}
-                      <label className="flex items-center space-x-2 text-xs">
-                        <input
-                          type="checkbox"
-                          checked={autoSaveEnabled}
-                          onChange={(e) => setAutoSaveEnabled(e.target.checked)}
-                          className="rounded"
-                        />
-                        <span>Auto-save</span>
-                      </label>
-                    </div>
-                    <div className="flex items-center flex-wrap gap-2">
-                      <button
-                        onClick={loadUserData}
-                        disabled={isLoadingUserData}
-                        title={
-                          isLoadingUserData
-                            ? "Loading sample data"
-                            : "Load sample data"
-                        }
-                        aria-label={
-                          isLoadingUserData
-                            ? "Loading sample data"
-                            : "Load sample data"
-                        }
-                        className="p-2 sm:px-3 sm:py-2 bg-blue-600 text-white rounded text-xs flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700"
-                      >
-                        <User className="h-4 w-4" />
-                        <span className="hidden sm:inline">
-                          {isLoadingUserData
-                            ? "Loading..."
-                            : "Load Sample Data"}
-                        </span>
-                      </button>
 
-                      <button
-                        onClick={saveUserData}
-                        disabled={
-                          isSavingUserData ||
-                          (!hasUnsavedChanges && autoSaveEnabled)
-                        }
-                        title={
-                          isSavingUserData ? "Saving changes" : "Save changes"
-                        }
-                        aria-label={
-                          isSavingUserData ? "Saving changes" : "Save changes"
-                        }
-                        className="p-2 sm:px-3 sm:py-2 bg-green-600 text-white rounded text-xs flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-700"
-                      >
-                        <Save className="h-4 w-4" />
-                        <span className="hidden sm:inline">
-                          {isSavingUserData ? "Saving..." : "Save Changes"}
-                        </span>
-                      </button>
+            {/* LEFT: MAIN editor panel */}
+            <div className="space-y-6 lg:col-span-5">
+              <TemplateSelector
+                selectedTemplate={selectedTemplate}
+                setSelectedTemplate={setSelectedTemplate}
+                pageSize={pageSize}
+                setPageSize={setPageSize}
+                fontFamily={fontFamily}
+                setFontFamily={setFontFamily}
+                primaryColor={primaryColor}
+                setPrimaryColor={setPrimaryColor}
+                secondaryColor={secondaryColor}
+                setSecondaryColor={setSecondaryColor}
+                sectionSpacingMm={sectionSpacingMm}
+                setSectionSpacingMm={setSectionSpacingMm}
+              />
 
-                      <button
-                        onClick={() => {
-                          setData(UserDataService.getEmptyResumeData());
-                          setIsDataLoaded(false);
-                          setHasUnsavedChanges(false);
-                        }}
-                        title="Clear all data"
-                        aria-label="Clear all data"
-                        className="p-2 sm:px-3 sm:py-2 bg-red-600 text-white rounded text-xs flex items-center gap-2 hover:bg-red-700"
-                      >
-                        <RefreshCw className="h-4 w-4" />
-                        <span className="hidden sm:inline">Clear All</span>
-                      </button>
-                    </div>
-                  </div>
-                  {dataLoadError && (
-                    <div className="mt-2 text-xs text-red-400 bg-red-900/20 border border-red-500/20 rounded px-2 py-1">
-                      {dataLoadError}
-                    </div>
-                  )}
-                  <div className="mt-2 text-xs text-gray-400">
-                    Click "Load Sample Data" to populate all fields with test
-                    data. You can then edit any field as needed.
-                    {autoSaveEnabled
-                      ? " Changes will be auto-saved every 3 seconds."
-                      : " Manual save required."}
+              <BasicInfoForm data={data} updateField={updateField} />
+
+              <ExperienceForm
+                data={data}
+                addExperience={addExperience}
+                updateExperience={updateExperience}
+                removeExperience={removeExperience}
+              />
+
+              <EducationForm
+                data={data}
+                addEducation={addEducation}
+                updateEducation={updateEducation}
+                removeEducation={removeEducation}
+              />
+
+              <SkillsForm data={data} updateField={updateField} />
+
+              <LinksForm data={data} updateField={updateField} />
+              <CustomSectionsForm data={data} updateField={updateField} />
+            </div>
+
+            {/* RIGHT: Live preview / Editor split */}
+            <div className="space-y-6 lg:col-span-7 hidden lg:block">
+              <section className="bg-white/5 border border-white/10 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-bold text-sm tracking-wide">
+                    LIVE PREVIEW
+                  </h2>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => setActiveTab("preview")}
+                      className={`px-3 py-1 text-xs rounded ${
+                        activeTab === "preview"
+                          ? "bg-white text-black"
+                          : "bg-white/10 text-gray-300"
+                      }`}
+                    >
+                      Preview
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("editor")}
+                      className={`px-3 py-1 text-xs rounded ${
+                        activeTab === "editor"
+                          ? "bg-white text-black"
+                          : "bg-white/10 text-gray-300"
+                      }`}
+                    >
+                      LaTeX Code
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("rendered")}
+                      className={`px-3 py-1 text-xs rounded ${
+                        activeTab === "rendered"
+                          ? "bg-white text-black"
+                          : "bg-white/10 text-gray-300"
+                      }`}
+                    >
+                      PDF
+                    </button>
                   </div>
                 </div>
-              </div>
-
-              {/* LEFT: MAIN editor panel */}
-              <div className="space-y-6 lg:col-span-5">
-                <TemplateSelector
-                  selectedTemplate={selectedTemplate}
-                  setSelectedTemplate={setSelectedTemplate}
-                  pageSize={pageSize}
-                  setPageSize={setPageSize}
-                  fontFamily={fontFamily}
-                  setFontFamily={setFontFamily}
-                  primaryColor={primaryColor}
-                  setPrimaryColor={setPrimaryColor}
-                  secondaryColor={secondaryColor}
-                  setSecondaryColor={setSecondaryColor}
-                  sectionSpacingMm={sectionSpacingMm}
-                  setSectionSpacingMm={setSectionSpacingMm}
-                />
-
-                <BasicInfoForm data={data} updateField={updateField} />
-
-                <ExperienceForm
-                  data={data}
-                  addExperience={addExperience}
-                  updateExperience={updateExperience}
-                  removeExperience={removeExperience}
-                />
-
-                <EducationForm
-                  data={data}
-                  addEducation={addEducation}
-                  updateEducation={updateEducation}
-                  removeEducation={removeEducation}
-                />
-
-                <SkillsForm data={data} updateField={updateField} />
-
-                <LinksForm data={data} updateField={updateField} />
-                <CustomSectionsForm data={data} updateField={updateField} />
-              </div>
-
-              {/* RIGHT: Live preview / Editor split */}
-              <div className="space-y-6 lg:col-span-7 hidden lg:block">
-                <section className="bg-white/5 border border-white/10 rounded-xl p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="font-bold text-sm tracking-wide">
-                      LIVE PREVIEW
-                    </h2>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => setActiveTab("preview")}
-                        className={`px-3 py-1 text-xs rounded ${
-                          activeTab === "preview"
-                            ? "bg-white text-black"
-                            : "bg-white/10 text-gray-300"
-                        }`}
-                      >
-                        Preview
-                      </button>
-                      <button
-                        onClick={() => setActiveTab("editor")}
-                        className={`px-3 py-1 text-xs rounded ${
-                          activeTab === "editor"
-                            ? "bg-white text-black"
-                            : "bg-white/10 text-gray-300"
-                        }`}
-                      >
-                        LaTeX Code
-                      </button>
-                      <button
-                        onClick={() => setActiveTab("rendered")}
-                        className={`px-3 py-1 text-xs rounded ${
-                          activeTab === "rendered"
-                            ? "bg-white text-black"
-                            : "bg-white/10 text-gray-300"
-                        }`}
-                      >
-                        PDF
-                      </button>
-                    </div>
-                  </div>
-                  <div className="mt-2 space-y-2 mb-4">
-                    <div className="flex items-center gap-2">
-                      <label className="flex items-center gap-2 text-xs bg-white/5 px-2 py-1 rounded">
-                        <input
-                          type="checkbox"
-                          checked={manualLatexPriority}
-                          onChange={async (e) => {
-                            const enabled = e.target.checked;
-                            setManualLatexPriority(enabled);
-                            if (enabled) {
-                              setLog((s) => s + "\\nManual priority enabled — editor code will be used");
-                              if (wsRef.current?.readyState === WebSocket.OPEN) {
-                                wsRef.current.send(JSON.stringify({ type: "edit", tex: latexCode }));
-                                setLoading(true);
-                              }
-                            } else {
-                              setLog((s) => s + "\\nManual priority disabled — using auto-generated LaTeX");
-                              try {
-                                const tex = generateResumeTex(data, selectedTemplate, {
+                <div className="mt-2 space-y-2 mb-4">
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 text-xs bg-white/5 px-2 py-1 rounded">
+                      <input
+                        type="checkbox"
+                        checked={manualLatexPriority}
+                        onChange={async (e) => {
+                          const enabled = e.target.checked;
+                          setManualLatexPriority(enabled);
+                          if (enabled) {
+                            setLog(
+                              (s) =>
+                                s +
+                                "\\nManual priority enabled — editor code will be used"
+                            );
+                            if (wsRef.current?.readyState === WebSocket.OPEN) {
+                              wsRef.current.send(
+                                JSON.stringify({ type: "edit", tex: latexCode })
+                              );
+                              setLoading(true);
+                            }
+                          } else {
+                            setLog(
+                              (s) =>
+                                s +
+                                "\\nManual priority disabled — using auto-generated LaTeX"
+                            );
+                            try {
+                              const tex = generateResumeTex(
+                                data,
+                                selectedTemplate,
+                                {
                                   pageSize,
                                   fontFamily,
                                   primaryColor,
                                   secondaryColor,
                                   sectionSpacingMm,
-                                });
-                                setLatexCode(tex);
-                                if (wsRef.current?.readyState === WebSocket.OPEN) {
-                                  wsRef.current.send(JSON.stringify({ type: "edit", tex }));
-                                  setLoading(true);
                                 }
-                              } catch (error) {
-                                setLog((s) => s + "\\nError generating LaTeX after disabling manual: " + (error instanceof Error ? error.message : "Unknown error"));
+                              );
+                              setLatexCode(tex);
+                              if (
+                                wsRef.current?.readyState === WebSocket.OPEN
+                              ) {
+                                wsRef.current.send(
+                                  JSON.stringify({ type: "edit", tex })
+                                );
+                                setLoading(true);
                               }
+                            } catch (error) {
+                              setLog(
+                                (s) =>
+                                  s +
+                                  "\\nError generating LaTeX after disabling manual: " +
+                                  (error instanceof Error
+                                    ? error.message
+                                    : "Unknown error")
+                              );
                             }
-                          }}
-                        />
-                        <span>Use editor for PDF</span>
-                      </label>
-                      <button
-                        onClick={() => setLogOpen(!logOpen)}
-                        className="text-xs px-2 py-1 bg-gray-700 rounded"
-                      >
-                        {logOpen ? "Hide" : "Show"} Build Log
-                      </button>
-                      <button
-                        onClick={() => setLog("")}
-                        className="text-xs px-2 py-1 bg-gray-700 rounded"
-                        title="Clear build log"
-                      >
-                        Clear Log
-                      </button>
-                      <button
-                        onClick={() => {
-                          try {
-                            // Exit manual mode and sync with generated LaTeX
-                            setManualLatexPriority(false);
-                            const tex = generateResumeTex(data, selectedTemplate, {
+                          }
+                        }}
+                      />
+                      <span>Use editor for PDF</span>
+                    </label>
+                    <button
+                      onClick={() => setLogOpen(!logOpen)}
+                      className="text-xs px-2 py-1 bg-gray-700 rounded"
+                    >
+                      {logOpen ? "Hide" : "Show"} Build Log
+                    </button>
+                    <button
+                      onClick={() => setLog("")}
+                      className="text-xs px-2 py-1 bg-gray-700 rounded"
+                      title="Clear build log"
+                    >
+                      Clear Log
+                    </button>
+                    <button
+                      onClick={() => {
+                        try {
+                          // Exit manual mode and sync with generated LaTeX
+                          setManualLatexPriority(false);
+                          const tex = generateResumeTex(
+                            data,
+                            selectedTemplate,
+                            {
                               pageSize,
                               fontFamily,
                               primaryColor,
                               secondaryColor,
                               sectionSpacingMm,
-                            });
-                            setLatexCode(tex);
-                            if (wsRef.current?.readyState === WebSocket.OPEN) {
-                              wsRef.current.send(JSON.stringify({ type: "edit", tex }));
-                              setLog((s) => s + "\\nSynced LaTeX and disabled manual priority");
                             }
-                          } catch (error) {
+                          );
+                          setLatexCode(tex);
+                          if (wsRef.current?.readyState === WebSocket.OPEN) {
+                            wsRef.current.send(
+                              JSON.stringify({ type: "edit", tex })
+                            );
                             setLog(
                               (s) =>
                                 s +
-                                "\\nError syncing LaTeX: " +
-                                (error instanceof Error
-                                  ? error.message
-                                  : "Unknown error")
+                                "\\nSynced LaTeX and disabled manual priority"
                             );
                           }
-                        }}
-                        className="text-xs px-2 py-1 bg-blue-600 text-white rounded"
+                        } catch (error) {
+                          setLog(
+                            (s) =>
+                              s +
+                              "\\nError syncing LaTeX: " +
+                              (error instanceof Error
+                                ? error.message
+                                : "Unknown error")
+                          );
+                        }
+                      }}
+                      className="text-xs px-2 py-1 bg-blue-600 text-white rounded"
+                    >
+                      Sync LaTeX
+                    </button>
+                    {loading && (
+                      <div className="text-xs text-yellow-400">Building...</div>
+                    )}
+                    {pdfUrl && (
+                      <a
+                        href={pdfUrl}
+                        download="resume.pdf"
+                        className="text-xs px-2 py-1 bg-green-600 text-white rounded flex items-center gap-1"
                       >
-                        Sync LaTeX
-                      </button>
-                      {loading && (
-                        <div className="text-xs text-yellow-400">
-                          Building...
-                        </div>
-                      )}
-                      {pdfUrl && (
-                        <a
-                          href={pdfUrl}
-                          download="resume.pdf"
-                          className="text-xs px-2 py-1 bg-green-600 text-white rounded flex items-center gap-1"
-                        >
-                          <Download className="h-3 w-3" />
-                          Download PDF
-                        </a>
-                      )}
-                    </div>
-
-                    {logOpen && (
-                      <div className="bg-black/60 border border-gray-600 rounded p-3 text-xs font-mono max-h-24 overflow-y-auto">
-                        <pre className="whitespace-pre-wrap text-gray-300">
-                          {log || "No logs yet..."}
-                        </pre>
-                      </div>
+                        <Download className="h-3 w-3" />
+                        Download PDF
+                      </a>
                     )}
                   </div>
-                  <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700 flex flex-col min-h-[600px] pt-3">
-                    {activeTab === "preview" ? (
-                      <div className="flex-1 p-4 overflow-auto bg-gray-100 min-h-0">
-                        <div className="max-w-4xl mx-auto bg-white shadow-lg">
-                          {renderTemplate()}
-                        </div>
+
+                  {logOpen && (
+                    <div className="bg-black/60 border border-gray-600 rounded p-3 text-xs font-mono max-h-24 overflow-y-auto">
+                      <pre className="whitespace-pre-wrap text-gray-300">
+                        {log || "No logs yet..."}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+                <div className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700 flex flex-col min-h-[600px] pt-3">
+                  {activeTab === "preview" ? (
+                    <div className="flex-1 p-4 overflow-auto bg-gray-100 min-h-0">
+                      <div className="max-w-4xl mx-auto bg-white shadow-lg">
+                        {renderTemplate()}
                       </div>
-                    ) : activeTab === "editor" ? (
-                      <div className="flex-1 min-h-0">
-                        <Editor
-                          height="600px"
-                          defaultLanguage="latex"
-                          value={latexCode}
-                          onChange={handleLatexCodeChange}
-                          theme="vs-dark"
-                          options={{
-                            minimap: { enabled: false },
-                            fontSize: 12,
-                            wordWrap: "on",
-                          }}
+                    </div>
+                  ) : activeTab === "editor" ? (
+                    <div className="flex-1 min-h-0">
+                      <Editor
+                        height="600px"
+                        defaultLanguage="latex"
+                        value={latexCode}
+                        onChange={handleLatexCodeChange}
+                        theme="vs-dark"
+                        options={{
+                          minimap: { enabled: false },
+                          fontSize: 12,
+                          wordWrap: "on",
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex-1 p-4 min-h-0 flex flex-col">
+                      {pdfUrl ? (
+                        <iframe
+                          src={pdfUrl}
+                          className="w-full flex-1 h-full rounded border-0"
+                          title="Generated PDF"
                         />
-                      </div>
-                    ) : (
-                      <div className="flex-1 p-4 min-h-0 flex flex-col">
-                        {pdfUrl ? (
-                          <iframe
-                            src={pdfUrl}
-                            className="w-full flex-1 h-full rounded border-0"
-                            title="Generated PDF"
-                          />
-                        ) : (
-                          <div className="flex items-center justify-center h-full text-gray-400">
-                            <div className="text-center">
-                              <Code className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                              <p>No PDF generated yet</p>
-                              <p className="text-sm">
-                                Fill in your information to generate a PDF
-                              </p>
-                            </div>
+                      ) : (
+                        <div className="flex items-center justify-center h-full text-gray-400">
+                          <div className="text-center">
+                            <Code className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                            <p>No PDF generated yet</p>
+                            <p className="text-sm">
+                              Fill in your information to generate a PDF
+                            </p>
                           </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </section>
-              </div>
-            </div>
-            {/* Mobile floating preview button */}
-            <div className="fixed bottom-4 right-4 lg:hidden">
-              <button
-                className="p-3 rounded-full bg-indigo-600 text-white shadow-lg"
-                onClick={() => setMobilePreviewOpen(true)}
-                title="Open preview"
-              >
-                <Eye className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Mobile preview modal */}
-            {mobilePreviewOpen && (
-              <div
-                className="fixed inset-0 z-50 bg-black/60 flex items-start lg:hidden"
-                onClick={() => setMobilePreviewOpen(false)}
-              >
-                <div
-                  className="bg-white w-full h-full overflow-auto relative"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <button
-                    onClick={() => setMobilePreviewOpen(false)}
-                    className="absolute top-4 right-4 p-3 bg-black/10 rounded-full"
-                    aria-label="Close preview"
-                  >
-                    <X className="h-6 w-6 text-black" />
-                  </button>
-                  <div className="p-4 pt-16">
-                    <div className="w-full max-w-4xl px-4 mx-auto">
-                      {renderTemplate()}
+                        </div>
+                      )}
                     </div>
+                  )}
+                </div>
+              </section>
+            </div>
+          </div>
+          {/* Mobile floating preview button */}
+          <div className="fixed bottom-4 right-4 lg:hidden">
+            <button
+              className="p-3 rounded-full bg-indigo-600 text-white shadow-lg"
+              onClick={() => setMobilePreviewOpen(true)}
+              title="Open preview"
+            >
+              <Eye className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Mobile preview modal */}
+          {mobilePreviewOpen && (
+            <div
+              className="fixed inset-0 z-50 bg-black/60 flex items-start lg:hidden"
+              onClick={() => setMobilePreviewOpen(false)}
+            >
+              <div
+                className="bg-white w-full h-full overflow-auto relative"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => setMobilePreviewOpen(false)}
+                  className="absolute top-4 right-4 p-3 bg-black/10 rounded-full"
+                  aria-label="Close preview"
+                >
+                  <X className="h-6 w-6 text-black" />
+                </button>
+                <div className="p-4 pt-16">
+                  <div className="w-full max-w-4xl px-4 mx-auto">
+                    {renderTemplate()}
                   </div>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            <FooterSection />
-          </main>
-        </div>
+          <FooterSection />
+        </main>
+      </div>
     </>
   );
 }

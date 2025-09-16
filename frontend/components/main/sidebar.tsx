@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import {
   Home,
   FileText,
-  FilePlus2,
+  View,
   // User,
   // Settings,
   // HelpCircle,
@@ -111,12 +111,12 @@ export default function Sidebar({
               Dashboard
             </NavItem>
             <NavItem
-              icon={<FilePlus2 />}
-              href="/generate-resume"
-              active={pathname === "/generate-resume"}
+              icon={<View />}
+              href="/parse-resume"
+              active={pathname === "/parse-resume"}
               isCollapsed={isCollapsed}
             >
-              Generate Resume
+              Parse Resume
             </NavItem>
             <NavItem
               icon={<FileText />}
