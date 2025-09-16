@@ -229,9 +229,9 @@ export default function ResumeGenerator() {
           location: parsed?.contact_information?.location || "",
           website: parsed?.contact_information?.website || "",
           summary: parsed?.professional_summary || "",
-          experiences: parsed?.work_experience || [],
-          education: parsed?.education || [],
-          skills: parsed?.skills || [],
+          experiences: [],
+          education: [],
+          skills: [],
           links: [],
           customSections: [],
         });
