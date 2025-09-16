@@ -80,15 +80,14 @@ Open the Command line or Terminal.
 
 1. Copy env example and create your local env
    ```bash
-   cp frontend/.env.example frontend/.env.local
+   cp .env.example .env.local
    ```
-2. Edit `frontend/.env.local` and set your own Clerk keys
+2. Edit `.env.local` and set your own Clerk keys
    - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=`
    - `CLERK_SECRET_KEY=`
    Do not commit `.env.local` (it is gitignored).
 3. Install and run the frontend
    ```bash
-   cd frontend
    pnpm install
    pnpm dev
    ```
@@ -99,7 +98,7 @@ Open the Command line or Terminal.
    - Sign Up: `/sign-up`
    - After sign-in: `/Dashboard` (protected; signed-out users are redirected to `/sign-in`)
 
-> Backend is optional for UI testing. If needed, see `backend/README.md` for setup.
+> Backend is optional for UI testing. If needed, see `backend/api/README.md` for setup.
 
 ## 🤝 Contributing
 

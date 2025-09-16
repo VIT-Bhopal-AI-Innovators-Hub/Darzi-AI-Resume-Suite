@@ -23,13 +23,10 @@ from utils.data_extractor.core import extract_text as vision_extract_text
 try:
     from ats.ats import (
         clean_text,
-        extract_text_from_resume_pdf,
-        calculate_comprehensive_resume_score,
         buzzwords
     )
     from ats.matchjd import (
-        get_resume_jd_match_score,
-        tfidf_vectorizer
+        get_resume_jd_match_score
     )
     print("successfully imported from existing ats files")
 except ImportError as e:
