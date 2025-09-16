@@ -86,11 +86,14 @@ export default function ATSCheckerPage() {
     formData.append("job_description", jobDescriptionText);
 
     try {
-      const response = await fetch("https://vit-bhopal-ai-innovators-hub-darzi-api-server.hf.space/ats-checker", {
-      // const response = await fetch("http://localhost:7860/ats-checker", {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(
+        "https://vit-bhopal-ai-innovators-hub-darzi-api-server.hf.space/ats-checker",
+        {
+          // const response = await fetch("http://localhost:7860/ats-checker", {
+          method: "POST",
+          body: formData,
+        }
+      );
 
       const data = await response.json();
       setAnalysisResult(data);
@@ -221,8 +224,8 @@ export default function ATSCheckerPage() {
               </div>
 
               {/* PREVIEW */}
-              <div className="space-y-6">
-                <section className="bg-white/5 border border-white/10 rounded-xl p-6 pt-4 h-auto">
+              <div className="space-y-6 h-[81vh] overflow-y-auto bg-white/5 border border-white/10 rounded-xl">
+                <section className="p-6 pt-4">
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="font-bold text-lg tracking-wide">
                       ANALYSIS RESULT
@@ -237,67 +240,40 @@ export default function ATSCheckerPage() {
                     <div className="space-y-4">
                       <div>
                         <span className="font-semibold">Overall Score:</span>{" "}
-                        <span className="text-green-400">
+                        <span
+                          className={`${
+                            analysisResult.overall_score > 80
+                              ? "text-green-400"
+                              : analysisResult.overall_score > 50
+                              ? "text-yellow-400"
+                              : "text-red-400"
+                          }`}
+                        >
                           {analysisResult.overall_score}
+                          <div className="relative pt-1">
+                            <div className="flex h-3 bg-gray-200 rounded">
+                              <div
+                                className={`rounded ${
+                                  analysisResult.overall_score > 80
+                                    ? "bg-green-400"
+                                    : analysisResult.overall_score > 50
+                                    ? "bg-yellow-400"
+                                    : "bg-red-400"
+                                }`}
+                                style={{
+                                  width: `${analysisResult.overall_score}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
                         </span>
                       </div>
+
                       <div>
                         <span className="font-semibold">Assessment:</span>{" "}
                         <span>{analysisResult.overall_assessment}</span>
                       </div>
-                      <div>
-                        <h3 className="font-semibold mt-2 mb-1">Categories:</h3>
-                        <ul className="space-y-2">
-                          {analysisResult.categories && Object.entries(analysisResult.categories).map(
-                            ([cat, val]: any) => (
-                              <li
-                                key={cat}
-                                className="border-b border-white/10 pb-2"
-                              >
-                                <div className="font-bold text-sm">
-                                  {cat.replace(/_/g, " ")}
-                                </div>
-                                <div>
-                                  <span className="font-semibold">Score:</span>{" "}
-                                  <span className="text-blue-300">
-                                    {val.score}
-                                  </span>
-                                </div>
-                                {val.details && (
-                                  <div className="text-xs text-gray-300">
-                                    {val.details}
-                                  </div>
-                                )}
-                                {val.suggestions && (
-                                  <div className="text-xs text-yellow-300">
-                                    <span className="font-semibold">
-                                      Suggestions:
-                                    </span>{" "}
-                                    {val.suggestions}
-                                  </div>
-                                )}
-                                {val.found_items &&
-                                  val.found_items.length > 0 && (
-                                    <div className="text-xs text-gray-400">
-                                      <span className="font-semibold">
-                                        Found:
-                                      </span>{" "}
-                                      {val.found_items.join(", ")}
-                                    </div>
-                                  )}
-                                {val.issues && val.issues.length > 0 && (
-                                  <div className="text-xs text-red-400">
-                                    <span className="font-semibold">
-                                      Issues:
-                                    </span>{" "}
-                                    {val.issues.join(", ")}
-                                  </div>
-                                )}
-                              </li>
-                            )
-                          )}
-                        </ul>
-                      </div>
+
                       {analysisResult.recommendations && (
                         <div>
                           <h3 className="font-semibold mt-2 mb-1">
@@ -317,19 +293,99 @@ export default function ATSCheckerPage() {
                           </ul>
                         </div>
                       )}
-                      <div className="text-xs text-gray-400 mt-2">
-                        <span className="font-semibold">Filename:</span>{" "}
-                        {analysisResult.metadata?.filename}
+
+                      <hr className="border-t border-gray-300" />
+
+                      <div>
+                        <h3 className="font-semibold mt-2 mb-1">Categories:</h3>
+                        <ul className="space-y-2">
+                          {analysisResult.categories &&
+                            Object.entries(analysisResult.categories).map(
+                              ([cat, val]: any) => (
+                                <li
+                                  key={cat}
+                                  className="border-b border-white/10 pb-2"
+                                >
+                                  <div className="font-bold text-sm">
+                                    {cat.replace(/_/g, " ")}
+                                  </div>
+                                  <div>
+                                    <span className="font-semibold">
+                                      Score:
+                                    </span>{" "}
+                                    <span className="text-blue-300">
+                                      {val.score}
+                                      {/* graph to showcase the score */}
+                                      <div className="relative py-1">
+                                        <div className="flex h-2 bg-gray-200 rounded">
+                                          <div
+                                            className={`rounded ${
+                                              val.score > 80
+                                                ? "bg-green-400"
+                                                : val.score > 50
+                                                ? "bg-yellow-400"
+                                                : "bg-red-400"
+                                            }`}
+                                            style={{
+                                              width: `${val.score}%`,
+                                            }}
+                                          />
+                                        </div>
+                                      </div>
+                                    </span>
+                                  </div>
+                                  {val.details && (
+                                    <div className="text-xs text-gray-300">
+                                      {val.details}
+                                    </div>
+                                  )}
+                                  {val.suggestions && (
+                                    <div className="text-xs text-yellow-300">
+                                      <span className="font-semibold">
+                                        Suggestions:
+                                      </span>{" "}
+                                      {val.suggestions}
+                                    </div>
+                                  )}
+                                  {val.found_items &&
+                                    val.found_items.length > 0 && (
+                                      <div className="text-xs text-gray-400">
+                                        <span className="font-semibold">
+                                          Found:
+                                        </span>{" "}
+                                        {val.found_items.join(", ")}
+                                      </div>
+                                    )}
+                                  {val.issues && val.issues.length > 0 && (
+                                    <div className="text-xs text-red-400">
+                                      <span className="font-semibold">
+                                        Issues:
+                                      </span>{" "}
+                                      {val.issues.join(", ")}
+                                    </div>
+                                  )}
+                                </li>
+                              )
+                            )}
+                        </ul>
                       </div>
-                      <div className="text-xs text-gray-400">
-                        <span className="font-semibold">Text Length:</span>{" "}
-                        {analysisResult.metadata?.text_length}
-                      </div>
-                      <div className="text-xs text-gray-400">
-                        <span className="font-semibold">
-                          Analysis Timestamp:
-                        </span>{" "}
-                        {analysisResult.metadata?.analysis_timestamp}
+
+                      <div className="">
+                        <h3 className="font-semibold mt-2">Metadata:</h3>
+                        <div className="text-xs text-gray-400 mt-1">
+                          <span className="font-semibold">Filename:</span>{" "}
+                          {analysisResult.metadata?.filename}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          <span className="font-semibold">Text Length:</span>{" "}
+                          {analysisResult.metadata?.text_length}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          <span className="font-semibold">
+                            Analysis Timestamp:
+                          </span>{" "}
+                          {analysisResult.metadata?.analysis_timestamp}
+                        </div>
                       </div>
                     </div>
                   ) : (
