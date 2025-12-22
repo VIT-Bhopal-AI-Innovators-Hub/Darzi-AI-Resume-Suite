@@ -43,7 +43,7 @@
     "katex": "^0.16.22",
     "lucide-react": "^0.536.0",
     "motion": "^12.23.12",
-    "next": "^15.4.5",
+    "next": "15.4.10",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "tailwind-merge": "^3.3.1",
